@@ -2,17 +2,16 @@ mod types;
 mod utils;
 mod telemetry;
 
-use std::process::{Command, Stdio, Child, ChildStdout, ChildStderr};
-use std::io::{BufReader, BufRead};
+use std::process::{Command, Stdio, Child};
 use std::sync::{Arc, Mutex};
 use sysinfo::{System, SystemExt, Pid};
 use std::thread;
 use std::time::Duration;
 use clap::Parser;
-use log::{info, error, debug};
+use log::{error, debug};
 use env_logger;
-use fs_extra::dir::get_size;
 use types::{Zap, Introduction, Exit, MessageBuffer, Endpoint};
+use utils::{read_streams, get_folder_size};
 use chrono::Utc;
 
 #[derive(Debug)]
@@ -20,20 +19,28 @@ use chrono::Utc;
 #[command(version, about, long_about = None)]
 struct Args {
     /// Restart the command if it exits
-    #[arg(short, long, default_value_t = false)]
+    #[arg(short = 'r', long, default_value_t = false)]
     restart: bool,
 
     /// Maximum number of restarts
-    #[arg(short, long, default_value_t = 5)]
+    #[arg(short = 'm', long, default_value_t = 5)]
     max_restarts: u32,
 
     /// Do not print output
-    #[arg(short, long, default_value_t = false)]
+    #[arg(short = 'o', long, default_value_t = false)]
     no_output: bool,
 
     /// Track data folder size
-    #[arg(short, long)]
+    #[arg(short = 'd', long)]
     data_folder: Option<String>,
+
+    /// Telemetry endpoint
+    #[arg(short = 'e', long)]
+    telemetry_endpoint: Option<String>,
+
+    /// Telemetry Interval
+    #[arg(short = 'i', long, default_value_t = 1.0)]
+    telemetry_interval: f64,
 
     /// Command to run
     #[arg(required = true, allow_hyphen_values = true)]
@@ -65,69 +72,6 @@ async fn main() {
     }
 }
 
-fn read_streams(
-    stdout: ChildStdout,
-    stderr: ChildStderr,
-    all_message_buffer: Arc<Mutex<Vec<MessageBuffer>>>,
-    stderr_message_buffer: Arc<Mutex<Vec<MessageBuffer>>>,
-    output_to_stdout: bool,
-) -> (thread::JoinHandle<()>, thread::JoinHandle<()>) {
-    let buffer_size = 25;
-
-    let message_all_clone = all_message_buffer.clone();
-    let stdout_handle = thread::spawn(move || {
-        let reader = BufReader::new(stdout);
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                if output_to_stdout {
-                    info!("{}", line);
-                }
-                if let Ok(mut message_buffer) = message_all_clone.lock() {
-                    message_buffer.push(MessageBuffer { message: line, timestamp: Utc::now().timestamp() as u64, error: false });
-
-                    if message_buffer.len() > buffer_size {
-                        let new_content = message_buffer[message_buffer.len() - buffer_size..].to_vec();
-                        *message_buffer = new_content;
-                    }
-                }
-            }
-        }
-    });
-
-    let stderr_handle = thread::spawn(move || {
-        let reader = BufReader::new(stderr);
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                if output_to_stdout {
-                    info!("{}", line);
-                }
-                if let Ok(mut message_buffer) = stderr_message_buffer.lock() {
-                    message_buffer.push(MessageBuffer { message: line.clone(), timestamp: Utc::now().timestamp() as u64, error: true });
-
-                    if message_buffer.len() > buffer_size {
-                        let new_content = message_buffer[message_buffer.len() - buffer_size..].to_vec();
-                        *message_buffer = new_content;
-                    }
-                }
-                if let Ok(mut message_buffer) = all_message_buffer.lock() {
-                    message_buffer.push(MessageBuffer { message: line.clone(), timestamp: Utc::now().timestamp() as u64, error: true });
-
-                    if message_buffer.len() > buffer_size {
-                        let new_content = message_buffer[message_buffer.len() - buffer_size..].to_vec();
-                        *message_buffer = new_content;
-                    }
-                }
-            }
-        }
-    });
-
-    return (stdout_handle, stderr_handle);
-}
-
-fn get_folder_size(folder: &str) -> u64 {
-    get_size(folder).unwrap_or(0)
-}
-
 async fn run_command(command: &str, args: &Args) -> bool {
     debug!("Running command: {:?} with args: {:?}", command, args);
 
@@ -151,7 +95,7 @@ async fn run_command(command: &str, args: &Args) -> bool {
 
     let introduction = Introduction::from_child(&child, root_proc, &root_proc_args.join(" "));
     debug!("Introduction: {:?}", introduction);
-    let _ = introduction.send_telemetry().await;
+    let _ = introduction.send_telemetry(args.telemetry_endpoint.clone()).await;
 
     let stdout = child.stdout.take().unwrap();
     let stderr = child.stderr.take().unwrap();
@@ -176,7 +120,7 @@ async fn run_command(command: &str, args: &Args) -> bool {
     );
 
     debug!("Exit: {:?}", exit);
-    let _ = exit.send_telemetry().await;
+    let _ = exit.send_telemetry(args.telemetry_endpoint.clone()).await;
 
     stdout_handle.join().unwrap();
     stderr_handle.join().unwrap();
@@ -189,7 +133,11 @@ async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<M
     let pid = Pid::from(child.id() as usize); // Get the PID of the child process
 
     // Monitor the process while it's running
+    let sleep_interval = Duration::from_secs_f64(args.telemetry_interval);
+
     loop {
+        let next_run = Utc::now() + sleep_interval;
+
         // Update system info
         sys.refresh_all();
 
@@ -206,7 +154,7 @@ async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<M
             let zap = Zap::from_process(process, data_folder_size, Some(messages.clone()));
             messages.clear();
             debug!("Zap: {:?}", zap);
-            let _ = zap.send_telemetry().await;
+            let _ = zap.send_telemetry(args.telemetry_endpoint.clone()).await;
         }
 
         if let None = process {
@@ -219,8 +167,8 @@ async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<M
             break
         }
 
-        // Sleep for a while before refreshing stats
-        thread::sleep(Duration::from_secs(1));
+        // Wait for a while before refreshing stats
+        tokio::time::sleep(next_run.signed_duration_since(Utc::now()).to_std().unwrap_or(Duration::from_secs(0))).await;
     }
 
     // Ensure the child process is waited upon to avoid zombies

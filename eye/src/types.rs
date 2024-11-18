@@ -102,8 +102,8 @@ impl Exit {
 }
 
 pub trait Endpoint: MessagePack {
-    async fn send_telemetry(&self) -> Result<(), Box<dyn Error>> {
-        send_telemetry(self.endpoint(), self.to_vec().unwrap()).await
+    async fn send_telemetry(&self, endpoint: Option<String>) -> Result<(), Box<dyn Error>> {
+        send_telemetry(self.endpoint(), self.to_vec().unwrap(), endpoint).await
     }
 
     fn endpoint(&self) -> &str;

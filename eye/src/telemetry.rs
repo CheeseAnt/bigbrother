@@ -9,8 +9,8 @@ static TELEMETRY_ENDPOINT: Lazy<String> = Lazy::new(|| {
 
 static CLIENT: Lazy<Client> = Lazy::new(|| Client::new());
 
-pub async fn send_telemetry(endpoint: &str, data: Vec<u8>) -> Result<(), Box<dyn Error>> {
-    let remote_endpoint = TELEMETRY_ENDPOINT.to_string() + "/" + endpoint;
+pub async fn send_telemetry(endpoint: &str, data: Vec<u8>, endpoint_override: Option<String>) -> Result<(), Box<dyn Error>> {
+    let remote_endpoint = endpoint_override.unwrap_or(TELEMETRY_ENDPOINT.to_string() + "/" + endpoint);
 
     debug!("Sending telemetry to {}", remote_endpoint);
 
