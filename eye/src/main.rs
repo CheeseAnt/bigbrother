@@ -2,8 +2,8 @@ mod types;
 mod utils;
 mod telemetry;
 
-use std::process::{Command, Stdio, Child};
-use std::io::{Read, BufReader, BufRead};
+use std::process::{Command, Stdio, Child, ChildStdout, ChildStderr};
+use std::io::{BufReader, BufRead};
 use std::sync::{Arc, Mutex};
 use sysinfo::{System, SystemExt, Pid};
 use std::thread;
@@ -12,7 +12,8 @@ use clap::Parser;
 use log::{info, error, debug};
 use env_logger;
 use fs_extra::dir::get_size;
-use types::{Zap, Introduction, Exit, Endpoint};
+use types::{Zap, Introduction, Exit, MessageBuffer, Endpoint};
+use chrono::Utc;
 
 #[derive(Debug)]
 #[derive(Parser)]
@@ -64,29 +65,63 @@ async fn main() {
     }
 }
 
-fn read_stream<R: Read + Send + 'static>(stream: R, fifo_buffer: Arc<Mutex<String>>, write_buffer: bool, output_to_stdout: bool) -> thread::JoinHandle<()> {
-    let buffer_size = 2048;
+fn read_streams(
+    stdout: ChildStdout,
+    stderr: ChildStderr,
+    all_message_buffer: Arc<Mutex<Vec<MessageBuffer>>>,
+    stderr_message_buffer: Arc<Mutex<Vec<MessageBuffer>>>,
+    output_to_stdout: bool,
+) -> (thread::JoinHandle<()>, thread::JoinHandle<()>) {
+    let buffer_size = 25;
 
-    thread::spawn(move || {
-        let reader = BufReader::new(stream);
+    let message_all_clone = all_message_buffer.clone();
+    let stdout_handle = thread::spawn(move || {
+        let reader = BufReader::new(stdout);
         for line in reader.lines() {
             if let Ok(line) = line {
                 if output_to_stdout {
                     info!("{}", line);
                 }
-                if let Ok(mut buffer) = fifo_buffer.lock() {
-                    buffer.push_str(&line);
-                    if !write_buffer {
-                        continue;
-                    }
-                    if buffer.len() > buffer_size {
-                        let new_content = buffer[buffer.len() - buffer_size..].to_string();
-                        *buffer = new_content;
+                if let Ok(mut message_buffer) = message_all_clone.lock() {
+                    message_buffer.push(MessageBuffer { message: line, timestamp: Utc::now().timestamp() as u64, error: false });
+
+                    if message_buffer.len() > buffer_size {
+                        let new_content = message_buffer[message_buffer.len() - buffer_size..].to_vec();
+                        *message_buffer = new_content;
                     }
                 }
             }
         }
-    })
+    });
+
+    let stderr_handle = thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                if output_to_stdout {
+                    info!("{}", line);
+                }
+                if let Ok(mut message_buffer) = stderr_message_buffer.lock() {
+                    message_buffer.push(MessageBuffer { message: line.clone(), timestamp: Utc::now().timestamp() as u64, error: true });
+
+                    if message_buffer.len() > buffer_size {
+                        let new_content = message_buffer[message_buffer.len() - buffer_size..].to_vec();
+                        *message_buffer = new_content;
+                    }
+                }
+                if let Ok(mut message_buffer) = all_message_buffer.lock() {
+                    message_buffer.push(MessageBuffer { message: line.clone(), timestamp: Utc::now().timestamp() as u64, error: true });
+
+                    if message_buffer.len() > buffer_size {
+                        let new_content = message_buffer[message_buffer.len() - buffer_size..].to_vec();
+                        *message_buffer = new_content;
+                    }
+                }
+            }
+        }
+    });
+
+    return (stdout_handle, stderr_handle);
 }
 
 fn get_folder_size(folder: &str) -> u64 {
@@ -122,17 +157,24 @@ async fn run_command(command: &str, args: &Args) -> bool {
     let stderr = child.stderr.take().unwrap();
 
     // start a thread to read from stdout
-    let stdout_fifo_buffer = Arc::new(Mutex::new(String::new()));
-    let stdout_handle = read_stream(stdout, stdout_fifo_buffer.clone(), false, !args.no_output);
+    let all_message_buffer = Arc::new(Mutex::new(Vec::new()));
+    let stderr_message_buffer = Arc::new(Mutex::new(Vec::new()));
+    let (stdout_handle, stderr_handle) = read_streams(stdout, stderr, all_message_buffer.clone(), stderr_message_buffer.clone(), !args.no_output);
 
-    let stderr_fifo_buffer = Arc::new(Mutex::new(String::new()));
-    // start a thread to read from stderr
-    let stderr_handle = read_stream(stderr, stderr_fifo_buffer.clone(), true, !args.no_output);
     let child_id = child.id();
 
-    let result = handle_process(child, &args, stderr_fifo_buffer.clone()).await;
+    let result = handle_process(
+        child,
+        &args,
+        all_message_buffer.clone()
+    ).await;
 
-    let exit = Exit::from_status(child_id as i32, result, if result == 0 { None } else { Some(stderr_fifo_buffer.lock().unwrap().clone()) });
+    let exit = Exit::from_status(
+        child_id as i32,
+        result,
+        if result == 0 { None } else { Some(stderr_message_buffer.lock().unwrap().clone()) },
+    );
+
     debug!("Exit: {:?}", exit);
     let _ = exit.send_telemetry().await;
 
@@ -142,7 +184,7 @@ async fn run_command(command: &str, args: &Args) -> bool {
     return result == 0;
 }
 
-async fn handle_process(mut child: Child, args: &Args, stderr_fifo_buffer: Arc<Mutex<String>>) -> i32 {
+async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<Mutex<Vec<MessageBuffer>>>) -> i32 {
     let mut sys = System::new_all();
     let pid = Pid::from(child.id() as usize); // Get the PID of the child process
 
@@ -160,9 +202,12 @@ async fn handle_process(mut child: Child, args: &Args, stderr_fifo_buffer: Arc<M
             debug!("Data folder size: {} KB", data_folder_size.unwrap());
         }
 
-        let zap = Zap::from_process(process, data_folder_size);
-        debug!("Zap: {:?}", zap);
-        let _ = zap.send_telemetry().await;
+        if let Ok(mut messages) = all_message_buffer.lock() {
+            let zap = Zap::from_process(process, data_folder_size, Some(messages.clone()));
+            messages.clear();
+            debug!("Zap: {:?}", zap);
+            let _ = zap.send_telemetry().await;
+        }
 
         if let None = process {
             debug!("Process with PID {} not found, it may have terminated.", pid);
@@ -191,13 +236,7 @@ async fn handle_process(mut child: Child, args: &Args, stderr_fifo_buffer: Arc<M
         debug!("Command succeeded");
     }
     else {
-        // get the last error message
-        if let Ok(buffer) = stderr_fifo_buffer.lock() {
-            error!("Last error message: {}", buffer);
-        }
-        else {
-            debug!("No stderr available");
-        }
+        error!("Command failed");
     }
 
     return status.code().unwrap_or(-1) as i32

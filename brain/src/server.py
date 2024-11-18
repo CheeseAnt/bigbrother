@@ -11,7 +11,7 @@ async def zap(request: sanic.Request):
     Record a zap.
     """
     payload = msgpack.unpackb(request.body)
-    zap = types.Zap(*payload)
+    zap = types.Zap(**payload)
 
     print(zap)
 
@@ -23,7 +23,7 @@ async def introduction(request: sanic.Request):
     Record an introduction.
     """
     payload = msgpack.unpackb(request.body)
-    introduction = types.Introduction(*payload)
+    introduction = types.Introduction(**payload)
     print(introduction)
 
     return sanic.response.HTTPResponse(status=200)
@@ -34,7 +34,7 @@ async def exit_route(request: sanic.Request):
     Record an exit.
     """
     payload = msgpack.unpackb(request.body)
-    exito = types.Exit(*payload)
+    exito = types.Exit(**payload)
     print(exito)
 
     return sanic.response.HTTPResponse(status=200)

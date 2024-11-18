@@ -6,6 +6,13 @@ use crate::utils::{get_current_user, get_hostname};
 use std::error::Error;
 use crate::telemetry::send_telemetry;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MessageBuffer {
+    pub message: String,
+    pub timestamp: u64,
+    pub error: bool
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Zap {
     pub memory: f64,
@@ -14,7 +21,7 @@ pub struct Zap {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub disk: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
+    pub messages: Option<Vec<MessageBuffer>>,
 }
 
 impl Endpoint for Zap {
@@ -24,19 +31,20 @@ impl Endpoint for Zap {
 }
 
 impl Zap {
-    pub fn from_process(process: Option<&Process>, data_folder_size: Option<u64>) -> Self {
+    pub fn from_process(process: Option<&Process>, data_folder_size: Option<u64>, messages: Option<Vec<MessageBuffer>>) -> Self {
         let mut memory = 0.0;
         let mut cpu = 0.0;
         if let Some(process) = process {
             memory = process.memory() as f64;
             cpu = process.cpu_usage() as f64;
         }
+
         let zap = Zap {
             memory,
             cpu,
             time: Utc::now().timestamp() as u64,
             disk: data_folder_size,
-            message: None,
+            messages,
         };
         zap
     }
@@ -78,7 +86,7 @@ pub struct Exit {
     pub exit_code: i32,
     pub time: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
+    pub messages: Option<Vec<MessageBuffer>>,
 }
 
 impl Endpoint for Exit {
@@ -88,8 +96,8 @@ impl Endpoint for Exit {
 }
 
 impl Exit {
-    pub fn from_status(pid: i32, status: i32, message: Option<String>) -> Self {
-        Exit { pid, exit_code: status, time: Utc::now().timestamp() as u64, message }
+    pub fn from_status(pid: i32, status: i32, messages: Option<Vec<MessageBuffer>>) -> Self {
+        Exit { pid, exit_code: status, time: Utc::now().timestamp() as u64, messages }
     }
 }
 
@@ -103,7 +111,7 @@ pub trait Endpoint: MessagePack {
 
 pub trait MessagePack: Serialize {
     fn to_vec(&self) -> Result<Vec<u8>, rmp_serde::encode::Error> {
-        rmp_serde::to_vec(self)
+        rmp_serde::to_vec_named(self)
     }
 }
 

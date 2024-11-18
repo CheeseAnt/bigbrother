@@ -2,6 +2,12 @@ import dataclasses
 import typing
 
 @dataclasses.dataclass
+class MessageBuffer:
+    message: str
+    timestamp: int
+    error: bool
+
+@dataclasses.dataclass
 class Zap:
     """
     A zap is a record of a eye activity.
@@ -10,7 +16,11 @@ class Zap:
     cpu: float
     time: int
     disk: typing.Optional[int] = None
-    message: typing.Optional[str] = None
+    messages: typing.Optional[typing.List[MessageBuffer]] = None
+
+    def __post_init__(self):
+        if self.messages is not None:
+            self.messages = [MessageBuffer(**m) for m in self.messages]
 
 @dataclasses.dataclass
 class Introduction:
@@ -32,4 +42,8 @@ class Exit:
     pid: int
     exit_code: int
     time: int
-    message: typing.Optional[str] = None
+    messages: typing.Optional[typing.List[MessageBuffer]] = None
+
+    def __post_init__(self):
+        if self.messages is not None:
+            self.messages = [MessageBuffer(**m) for m in self.messages]
