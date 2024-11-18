@@ -70,10 +70,6 @@ impl Introduction {
         };
         introduction
     }
-
-    pub fn to_vec(&self) -> Result<Vec<u8>, rmp_serde::encode::Error> {
-        rmp_serde::to_vec(self)
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

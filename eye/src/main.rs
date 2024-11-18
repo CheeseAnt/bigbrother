@@ -115,7 +115,7 @@ async fn run_command(command: &str, args: &Args) -> bool {
     debug!("Monitoring process with PID: {}", child.id());
 
     let introduction = Introduction::from_child(&child, root_proc, &root_proc_args.join(" "));
-    debug!("Introduction: {:?} and {:?}", introduction, introduction.to_vec().unwrap());
+    debug!("Introduction: {:?}", introduction);
     let _ = introduction.send_telemetry().await;
 
     let stdout = child.stdout.take().unwrap();
