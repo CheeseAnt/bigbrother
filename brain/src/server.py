@@ -1,7 +1,7 @@
 import sanic
 import sanic.response
 import msgpack
-from . import types
+from . import types, database
 
 app = sanic.Sanic("Brain")
 
@@ -13,9 +13,7 @@ async def zap(request: sanic.Request):
     payload = msgpack.unpackb(request.body)
     zap = types.Zap(**payload)
 
-    print(zap)
-
-    return sanic.response.HTTPResponse(status=200)
+    return await database.add_entry(zap)
 
 @app.route("/introduction", methods=["POST"])
 async def introduction(request: sanic.Request):
@@ -24,9 +22,8 @@ async def introduction(request: sanic.Request):
     """
     payload = msgpack.unpackb(request.body)
     introduction = types.Introduction(**payload)
-    print(introduction)
 
-    return sanic.response.HTTPResponse(status=200)
+    return await database.add_entry(introduction)
 
 @app.route("/exit", methods=["POST"])
 async def exit_route(request: sanic.Request):
@@ -35,7 +32,6 @@ async def exit_route(request: sanic.Request):
     """
     payload = msgpack.unpackb(request.body)
     exito = types.Exit(**payload)
-    print(exito)
 
-    return sanic.response.HTTPResponse(status=200)
+    return await database.add_entry(exito)
 

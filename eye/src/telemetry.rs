@@ -1,7 +1,7 @@
 use reqwest::Client;
-use std::error::Error;
 use once_cell::sync::Lazy;
 use log::debug;
+use crate::types::BrainWaveError;
 
 static TELEMETRY_ENDPOINT: Lazy<String> = Lazy::new(|| {
     std::env::var("TELEMETRY_ENDPOINT").unwrap_or_else(|_| "https://bb.antonshmanton.com/telemetry".to_string())
@@ -9,8 +9,8 @@ static TELEMETRY_ENDPOINT: Lazy<String> = Lazy::new(|| {
 
 static CLIENT: Lazy<Client> = Lazy::new(|| Client::new());
 
-pub async fn send_telemetry(endpoint: &str, data: Vec<u8>, endpoint_override: Option<String>) -> Result<(), Box<dyn Error>> {
-    let remote_endpoint = endpoint_override.unwrap_or(TELEMETRY_ENDPOINT.to_string() + "/" + endpoint);
+pub async fn send_telemetry(endpoint: &str, data: Vec<u8>, endpoint_override: Option<String>) -> Result<String, BrainWaveError> {
+    let remote_endpoint = endpoint_override.unwrap_or(TELEMETRY_ENDPOINT.to_string()) + "/" + endpoint;
 
     debug!("Sending telemetry to {}", remote_endpoint);
 
@@ -21,9 +21,24 @@ pub async fn send_telemetry(endpoint: &str, data: Vec<u8>, endpoint_override: Op
         .timeout(std::time::Duration::from_secs(2))
         .send()
         .await?;
-    if !response.status().is_success() {
-        return Err(format!("Request failed with status: {}", response.status()).into());
+
+    let status = response.status();
+    if !status.is_success() {
+        return Err(BrainWaveError::TelemetryError(format!("Request failed with status: {}", status)).into());
     }
 
-    Ok(())
+    let body = response.text().await?;  
+    if status == 200 {
+        match body.as_str() {
+            "restart" => return Err(BrainWaveError::RestartRequired("Restart command received from telemetry server".to_string()).into()),
+            "exit" => return Err(BrainWaveError::ExitRequired("Exit command received from telemetry server".to_string()).into()),
+            _ => debug!("Telemetry server returned unknown command: {}", body),
+        }
+    }
+
+    if status == 201 {
+        return Ok(body);
+    }
+
+    Ok("".to_string())
 }

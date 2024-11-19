@@ -2,10 +2,10 @@ use serde::{Serialize, Deserialize};
 use chrono::Utc;
 use clap::Parser;
 use sysinfo::{Process, ProcessExt};
-use std::process::Child;
 use crate::utils::{get_current_user, get_hostname};
 use std::error::Error;
 use crate::telemetry::send_telemetry;
+use log::error;
 
 #[derive(Debug)]
 #[derive(Parser)]
@@ -52,6 +52,33 @@ pub struct Args {
     pub command: Vec<String>,
 }
 
+#[derive(Debug)]
+pub enum BrainWaveError {
+    RestartRequired(String),
+    ExitRequired(String),
+    TelemetryError(String),
+    ReqwestError(String),
+}
+
+impl std::fmt::Display for BrainWaveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BrainWaveError::RestartRequired(msg) => write!(f, "Process restart required: {}", msg),
+            BrainWaveError::ExitRequired(msg) => write!(f, "Process exit required: {}", msg), 
+            BrainWaveError::TelemetryError(msg) => write!(f, "Telemetry error occurred: {}", msg),
+            BrainWaveError::ReqwestError(msg) => write!(f, "Request error occurred: {}", msg),
+        }
+    }
+}
+
+impl Error for BrainWaveError {}
+impl From<reqwest::Error> for BrainWaveError {
+    fn from(err: reqwest::Error) -> Self {
+        BrainWaveError::ReqwestError(err.to_string())
+    }
+}
+
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MessageBuffer {
     pub message: String,
@@ -61,6 +88,7 @@ pub struct MessageBuffer {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Zap {
+    pub uuid: String,
     pub memory: f64,
     pub cpu: f64,
     pub time: u64,
@@ -77,7 +105,7 @@ impl Endpoint for Zap {
 }
 
 impl Zap {
-    pub fn from_process(process: Option<&Process>, data_folder_size: Option<u64>, messages: Option<Vec<MessageBuffer>>) -> Self {
+    pub fn from_process(uuid: String, process: Option<&Process>, data_folder_size: Option<u64>, messages: Option<Vec<MessageBuffer>>) -> Self {
         let mut memory = 0.0;
         let mut cpu = 0.0;
         if let Some(process) = process {
@@ -86,6 +114,7 @@ impl Zap {
         }
 
         let zap = Zap {
+            uuid,
             memory,
             cpu,
             time: Utc::now().timestamp() as u64,
@@ -99,6 +128,7 @@ impl Zap {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Introduction {
     pub pid: i32,
+    pub parent_pid: i32,
     pub name: String,
     pub args: String,
     pub host: String,
@@ -113,9 +143,10 @@ impl Endpoint for Introduction {
 }
 
 impl Introduction {
-    pub fn from_child(child: &Child, root_proc: &str, root_proc_args: &str) -> Self {
+    pub fn from_child(parent_pid: i32, child_pid: i32, root_proc: &str, root_proc_args: &str) -> Self {
         let introduction = Introduction {
-            pid: child.id() as i32,
+            pid: child_pid,
+            parent_pid: parent_pid,
             name: root_proc.to_string(),
             args: root_proc_args.to_string(),
             host: get_hostname(),
@@ -128,7 +159,7 @@ impl Introduction {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Exit {
-    pub pid: i32,
+    pub uuid: String,
     pub exit_code: i32,
     pub time: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -142,14 +173,21 @@ impl Endpoint for Exit {
 }
 
 impl Exit {
-    pub fn from_status(pid: i32, status: i32, messages: Option<Vec<MessageBuffer>>) -> Self {
-        Exit { pid, exit_code: status, time: Utc::now().timestamp() as u64, messages }
+    pub fn from_status(uuid: String, status: i32, messages: Option<Vec<MessageBuffer>>) -> Self {
+        Exit { uuid, exit_code: status, time: Utc::now().timestamp() as u64, messages }
     }
 }
 
 pub trait Endpoint: MessagePack {
-    async fn send_telemetry(&self, endpoint: Option<String>) -> Result<(), Box<dyn Error>> {
-        send_telemetry(self.endpoint(), self.to_vec().unwrap(), endpoint).await
+    async fn send_telemetry(&self, endpoint: Option<String>) -> Result<String, BrainWaveError> {
+        match send_telemetry(self.endpoint(), self.to_vec().unwrap(), endpoint).await {
+            Ok(response) => Ok(response),
+            Err(BrainWaveError::ReqwestError(e)) => {
+                error!("Telemetry request failed: {}", e);
+                Ok("".to_string()) // Continue execution even if telemetry fails
+            },
+            Err(e) => Err(e), // Propagate other errors
+        }
     }
 
     fn endpoint(&self) -> &str;

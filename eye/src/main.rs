@@ -9,7 +9,7 @@ use std::thread;
 use std::time::Duration;
 use log::{error, debug, LevelFilter};
 use env_logger;
-use types::{Zap, Introduction, Exit, MessageBuffer, Endpoint, Args};
+use types::{Zap, Introduction, Exit, MessageBuffer, Endpoint, Args, BrainWaveError};
 use utils::{read_streams, get_folder_size};
 use chrono::Utc;
 use clap::Parser;
@@ -29,25 +29,42 @@ async fn main() {
     let command = &args.command.join(" ");
 
     // Run the command
-    for i in 0..args.max_restarts {
-        if run_command(command, &args).await {
-            break;
+    let mut attempt_count = 0;
+    while attempt_count < args.max_restarts {
+        match run_command(command, &args).await {
+            Ok(true) => {
+                debug!("Command completed successfully - exiting");
+                break;
+            },
+            Ok(false) => {
+                if !(args.restart) {
+                    debug!("Command completed with non-zero exit code - exiting");
+                    break;
+                }
+                debug!("Command completed with non-zero exit code - restarting in {} seconds", attempt_count + 1);
+                thread::sleep(Duration::from_secs((attempt_count + 1).into()));
+            },
+            Err(BrainWaveError::RestartRequired(_)) => {
+                debug!("Restart command received from brain");
+                continue;
+            },
+            Err(BrainWaveError::ExitRequired(_)) => {
+                debug!("Exit command received from brain");
+                break;
+            },
+            Err(e) => {
+                error!("Unknown error in top level: {} - restarting", e);
+            }
         }
 
-        if !args.restart {
-            break;
-        }
-
-        if i + 1 != args.max_restarts {
-            debug!("Restarting in {} seconds", i + 1);
-            thread::sleep(Duration::from_secs((i + 1).into()));
-        }
+        attempt_count = attempt_count + 1;
     }
 }
 
-async fn run_command(command: &str, args: &Args) -> bool {
+async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError> {
     debug!("Running command: {:?} with args: {:?}", command, args);
 
+    let parent_pid = std::process::id() as usize;
     let root_proc = command.split(" ").next().unwrap();
     let root_proc_args = command.split(" ").skip(1).collect::<Vec<&str>>();
     // Spawn the subshell process
@@ -60,15 +77,24 @@ async fn run_command(command: &str, args: &Args) -> bool {
         Ok(child) => child,
         Err(e) => {
             error!("Failed to spawn process: {}", e);
-            return false;
+            return Ok(false);
         }
     };
 
     debug!("Monitoring process with PID: {}", child.id());
 
-    let introduction = Introduction::from_child(&child, root_proc, &root_proc_args.join(" "));
+    let uuid: String;
+    let introduction = Introduction::from_child(parent_pid as i32, child.id() as i32, root_proc, &root_proc_args.join(" "));
     debug!("Introduction: {:?}", introduction);
-    let _ = introduction.send_telemetry(args.telemetry_endpoint.clone()).await;
+    match introduction.send_telemetry(args.telemetry_endpoint.clone()).await {
+        Ok(uuid_response) => {
+            debug!("Setting UUID: {}", uuid_response);
+            uuid = uuid_response;
+        },
+        Err(e) => {
+            return Err(e);
+        }
+    }
 
     let stdout = child.stdout.take().unwrap();
     let stderr = child.stderr.take().unwrap();
@@ -78,30 +104,40 @@ async fn run_command(command: &str, args: &Args) -> bool {
     let stderr_message_buffer = Arc::new(Mutex::new(Vec::new()));
     let (stdout_handle, stderr_handle) = read_streams(stdout, stderr, all_message_buffer.clone(), stderr_message_buffer.clone(), &args);
 
-    let child_id = child.id();
-
     let result = handle_process(
         child,
         &args,
-        all_message_buffer.clone()
+        all_message_buffer.clone(),
+        uuid.clone()
     ).await;
 
+    let result_int: i32;
+
+    match result {
+        Ok(result) => {
+            result_int = result;
+        },
+        Err(_) => {
+            result_int = -1;
+        }
+    }
+
     let exit = Exit::from_status(
-        child_id as i32,
-        result,
-        if result == 0 { None } else { Some(stderr_message_buffer.lock().unwrap().clone()) },
+        uuid,
+        result_int,
+        if result_int == 0 { None } else { Some(stderr_message_buffer.lock().unwrap().clone()) },
     );
 
     debug!("Exit: {:?}", exit);
-    let _ = exit.send_telemetry(args.telemetry_endpoint.clone()).await;
+    let _ = exit.send_telemetry(args.telemetry_endpoint.clone()).await?;
 
     stdout_handle.join().unwrap();
     stderr_handle.join().unwrap();
 
-    return result == 0;
+    return Ok(result_int == 0);
 }
 
-async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<Mutex<Vec<MessageBuffer>>>) -> i32 {
+async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<Mutex<Vec<MessageBuffer>>>, uuid: String) -> Result<i32, BrainWaveError> {
     let mut sys = System::new_all();
     let pid = Pid::from(child.id() as usize); // Get the PID of the child process
 
@@ -124,10 +160,10 @@ async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<M
         }
 
         if let Ok(mut messages) = all_message_buffer.lock() {
-            let zap = Zap::from_process(process, data_folder_size, Some(messages.clone()));
+            let zap = Zap::from_process(uuid.clone(), process, data_folder_size, Some(messages.clone()));
             messages.clear();
             debug!("Zap: {:?}", zap);
-            let _ = zap.send_telemetry(args.telemetry_endpoint.clone()).await;
+            let _ = zap.send_telemetry(args.telemetry_endpoint.clone()).await?;
         }
 
         if let None = process {
@@ -160,5 +196,5 @@ async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<M
         error!("Command failed");
     }
 
-    return status.code().unwrap_or(-1) as i32
+    return Ok(status.code().unwrap_or(-1) as i32)
 }
