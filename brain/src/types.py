@@ -1,4 +1,6 @@
 import dataclasses
+import dataclasses_json
+import datetime
 import typing
 import sanic.response
 
@@ -7,7 +9,7 @@ class Entry():
         return dataclasses.asdict(self)
 
 @dataclasses.dataclass
-class MessageBuffer(Entry):
+class MessageBuffer(Entry, dataclasses_json.DataClassJsonMixin):
     message: str
     timestamp: int
     error: bool
@@ -66,3 +68,67 @@ class IntroductionResponse(sanic.response.HTTPResponse):
 class CommandResponse(sanic.response.HTTPResponse):
     def __init__(self, **kwargs):
         super().__init__(status=200, **kwargs)
+
+@dataclasses.dataclass
+class UIRequest:
+    """
+    A request for UI data.
+    """
+    uuid: str
+    start: typing.Optional[int] = None
+    end: typing.Optional[int] = None
+
+    def to_dict(self) -> dict:
+        return {k: v for k, v in dataclasses.asdict(self).items() if v is not None}
+
+    @classmethod
+    def from_request(cls, uuid: str, request: sanic.Request):
+        return cls(
+            uuid=uuid,
+            start=request.args.get("start"),
+            end=request.args.get("end")
+        )
+
+@dataclasses.dataclass
+class ActionRequest(dataclasses_json.DataClassJsonMixin):
+    """
+    A request to perform an action on a given UUID.
+    """
+    uuid: str
+    action: str
+    time: int = dataclasses.field(default_factory=lambda: int(datetime.datetime.now().timestamp()))
+    handled: bool = False
+
+@dataclasses.dataclass
+class StatusResponse(dataclasses_json.DataClassJsonMixin):
+    """
+    A response to get the status of a given UUID.
+    """
+    uuid: str
+    host: str
+    ip: str
+    pid: int
+    parent_pid: int
+    name: str
+    args: str
+    created_time: int
+    exited: bool
+
+@dataclasses.dataclass
+class MetricsResponseStructure(dataclasses_json.DataClassJsonMixin):
+    """
+    A response to get the metrics of a given UUID.
+    """
+    cpu: float
+    memory: float
+    disk: float
+    time: int
+
+@dataclasses.dataclass
+class ExitResponse(dataclasses_json.DataClassJsonMixin):
+    """
+    A response to get the exit of a given UUID.
+    """
+    exit_code: int
+    time: int
+    messages: typing.Optional[typing.List[MessageBuffer]] = None
