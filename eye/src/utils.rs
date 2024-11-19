@@ -7,7 +7,7 @@ use std::thread;
 use std::process::{ChildStdout, ChildStderr};
 use fs_extra::dir::get_size;
 use log::{info};
-use crate::types::MessageBuffer;
+use crate::types::{MessageBuffer, Args};
 
 pub fn get_current_user() -> String {
     users::get_current_username()
@@ -26,23 +26,23 @@ pub fn read_streams(
     stderr: ChildStderr,
     all_message_buffer: Arc<Mutex<Vec<MessageBuffer>>>,
     stderr_message_buffer: Arc<Mutex<Vec<MessageBuffer>>>,
-    output_to_stdout: bool,
+    args: &Args,
 ) -> (thread::JoinHandle<()>, thread::JoinHandle<()>) {
-    let buffer_size = 25;
+    let log_buffer_size = args.log_buffer_size;
+    let error_log_buffer_size = args.error_log_buffer_size;
 
     let message_all_clone = all_message_buffer.clone();
     let stdout_handle = thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
             if let Ok(line) = line {
-                if output_to_stdout {
-                    info!("{}", line);
-                }
+                info!("{}", line);
+
                 if let Ok(mut message_buffer) = message_all_clone.lock() {
                     message_buffer.push(MessageBuffer { message: line, timestamp: Utc::now().timestamp() as u64, error: false });
 
-                    if message_buffer.len() > buffer_size {
-                        let new_content = message_buffer[message_buffer.len() - buffer_size..].to_vec();
+                    if message_buffer.len() > log_buffer_size {
+                        let new_content = message_buffer[message_buffer.len() - log_buffer_size..].to_vec();
                         *message_buffer = new_content;
                     }
                 }
@@ -54,22 +54,21 @@ pub fn read_streams(
         let reader = BufReader::new(stderr);
         for line in reader.lines() {
             if let Ok(line) = line {
-                if output_to_stdout {
-                    info!("{}", line);
-                }
+                info!("{}", line);
+
                 if let Ok(mut message_buffer) = stderr_message_buffer.lock() {
                     message_buffer.push(MessageBuffer { message: line.clone(), timestamp: Utc::now().timestamp() as u64, error: true });
 
-                    if message_buffer.len() > buffer_size {
-                        let new_content = message_buffer[message_buffer.len() - buffer_size..].to_vec();
+                    if message_buffer.len() > error_log_buffer_size {
+                        let new_content = message_buffer[message_buffer.len() - error_log_buffer_size..].to_vec();
                         *message_buffer = new_content;
                     }
                 }
                 if let Ok(mut message_buffer) = all_message_buffer.lock() {
                     message_buffer.push(MessageBuffer { message: line.clone(), timestamp: Utc::now().timestamp() as u64, error: true });
 
-                    if message_buffer.len() > buffer_size {
-                        let new_content = message_buffer[message_buffer.len() - buffer_size..].to_vec();
+                    if message_buffer.len() > log_buffer_size {
+                        let new_content = message_buffer[message_buffer.len() - log_buffer_size..].to_vec();
                         *message_buffer = new_content;
                     }
                 }

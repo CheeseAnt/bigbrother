@@ -1,10 +1,56 @@
 use serde::{Serialize, Deserialize};
 use chrono::Utc;
+use clap::Parser;
 use sysinfo::{Process, ProcessExt};
 use std::process::Child;
 use crate::utils::{get_current_user, get_hostname};
 use std::error::Error;
 use crate::telemetry::send_telemetry;
+
+#[derive(Debug)]
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+pub struct Args {
+    /// Restart the command if it exits
+    #[arg(short = 'r', long, default_value_t = false)]
+    pub restart: bool,
+
+    /// Maximum number of restarts
+    #[arg(short = 'm', long, default_value_t = 5)]
+    pub max_restarts: u32,
+
+    /// Do not print output
+    #[arg(short = 'n', long, default_value_t = false)]
+    pub no_output: bool,
+
+    /// Track data folder size
+    #[arg(short = 'd', long)]
+    pub data_folder: Option<String>,
+
+    /// Telemetry endpoint
+    #[arg(short = 'e', long)]
+    pub telemetry_endpoint: Option<String>,
+
+    /// Telemetry Interval
+    #[arg(short = 'i', long, default_value_t = 1.0)]
+    pub telemetry_interval: f64,
+
+    /// Telemetry log buffer size
+    #[arg(short = 'l', long, default_value_t = 50)]
+    pub log_buffer_size: usize,
+
+    /// Telemetry error log buffer size
+    #[arg(short = 'z', long, default_value_t = 25)]
+    pub error_log_buffer_size: usize,
+
+    /// Verbose output
+    #[arg(short = 'v', long, default_value_t = false)]
+    pub verbose: bool,
+
+    /// Command to run
+    #[arg(required = true, allow_hyphen_values = true)]
+    pub command: Vec<String>,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MessageBuffer {

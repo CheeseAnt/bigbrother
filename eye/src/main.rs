@@ -7,50 +7,23 @@ use std::sync::{Arc, Mutex};
 use sysinfo::{System, SystemExt, Pid};
 use std::thread;
 use std::time::Duration;
-use clap::Parser;
-use log::{error, debug};
+use log::{error, debug, LevelFilter};
 use env_logger;
-use types::{Zap, Introduction, Exit, MessageBuffer, Endpoint};
+use types::{Zap, Introduction, Exit, MessageBuffer, Endpoint, Args};
 use utils::{read_streams, get_folder_size};
 use chrono::Utc;
-
-#[derive(Debug)]
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
-struct Args {
-    /// Restart the command if it exits
-    #[arg(short = 'r', long, default_value_t = false)]
-    restart: bool,
-
-    /// Maximum number of restarts
-    #[arg(short = 'm', long, default_value_t = 5)]
-    max_restarts: u32,
-
-    /// Do not print output
-    #[arg(short = 'o', long, default_value_t = false)]
-    no_output: bool,
-
-    /// Track data folder size
-    #[arg(short = 'd', long)]
-    data_folder: Option<String>,
-
-    /// Telemetry endpoint
-    #[arg(short = 'e', long)]
-    telemetry_endpoint: Option<String>,
-
-    /// Telemetry Interval
-    #[arg(short = 'i', long, default_value_t = 1.0)]
-    telemetry_interval: f64,
-
-    /// Command to run
-    #[arg(required = true, allow_hyphen_values = true)]
-    command: Vec<String>,
-}
+use clap::Parser;
 
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    env_logger::init();
+    env_logger::Builder::new()
+        .filter_level(if args.verbose { LevelFilter::Debug } else { if args.no_output { LevelFilter::Error } else { LevelFilter::Info } })
+        .init();
+
+    if args.verbose {
+        debug!("Verbose output enabled");
+    }
 
     // Check and fetch the command-line argument
     let command = &args.command.join(" ");
@@ -103,7 +76,7 @@ async fn run_command(command: &str, args: &Args) -> bool {
     // start a thread to read from stdout
     let all_message_buffer = Arc::new(Mutex::new(Vec::new()));
     let stderr_message_buffer = Arc::new(Mutex::new(Vec::new()));
-    let (stdout_handle, stderr_handle) = read_streams(stdout, stderr, all_message_buffer.clone(), stderr_message_buffer.clone(), !args.no_output);
+    let (stdout_handle, stderr_handle) = read_streams(stdout, stderr, all_message_buffer.clone(), stderr_message_buffer.clone(), &args);
 
     let child_id = child.id();
 
