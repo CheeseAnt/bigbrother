@@ -1,13 +1,15 @@
 use users;
 use hostname;
-use chrono::Utc;
+use chrono::{Utc, DateTime, SecondsFormat};
 use std::io::{BufReader, BufRead};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::process::{ChildStdout, ChildStderr};
 use fs_extra::dir::get_size;
 use log::{info};
-use crate::types::{MessageBuffer, Args};
+use std::fs::File;
+use std::io::Write;
+use crate::types::{MessageBuffer, Args, Zap};
 
 pub fn get_current_user() -> String {
     users::get_current_username()
@@ -81,4 +83,21 @@ pub fn read_streams(
 
 pub fn get_folder_size(folder: &str) -> u64 {
     get_size(folder).unwrap_or(0)
+}
+
+pub fn log_zap(zap: &Zap, log_file: &mut Option<File>) {
+    if let Some(log_file) = log_file {
+        let mut messages = zap.messages.as_ref().map(|m| m.iter().map(|m| m.message.clone()).collect::<Vec<String>>()).unwrap_or(vec![]);
+        let time: String = DateTime::from_timestamp_millis(zap.time as i64).unwrap().to_rfc3339_opts(SecondsFormat::Millis, true);
+
+        if messages.len() == 0 {
+            messages.push("".to_string());
+        }
+
+        for message in messages {
+            log_file.write_all(format!(
+                "{:}: {:?}, {:?}, {:?}, {:}\n", time, zap.memory, zap.cpu, zap.disk, message
+            ).as_bytes()).unwrap();
+        }
+    }
 }

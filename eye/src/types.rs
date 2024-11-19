@@ -36,7 +36,7 @@ pub struct Args {
     pub telemetry_interval: f64,
 
     /// Telemetry log buffer size
-    #[arg(short = 'l', long, default_value_t = 50)]
+    #[arg(short = 'b', long, default_value_t = 50)]
     pub log_buffer_size: usize,
 
     /// Telemetry error log buffer size
@@ -46,6 +46,14 @@ pub struct Args {
     /// Verbose output
     #[arg(short = 'v', long, default_value_t = false)]
     pub verbose: bool,
+
+    /// Prevent telemetry
+    #[arg(short = 'x', long, default_value_t = false)]
+    pub prevent_telemetry: bool,
+
+    /// Log to file
+    #[arg(short = 'l', long)]
+    pub log_to_file: Option<String>,
 
     /// Command to run
     #[arg(required = true, allow_hyphen_values = true)]
@@ -117,7 +125,7 @@ impl Zap {
             uuid,
             memory,
             cpu,
-            time: Utc::now().timestamp() as u64,
+            time: Utc::now().timestamp_millis() as u64,
             disk: data_folder_size,
             messages,
         };
@@ -151,7 +159,7 @@ impl Introduction {
             args: root_proc_args.to_string(),
             host: get_hostname(),
             user: get_current_user(),
-            time: Utc::now().timestamp() as u64,
+            time: Utc::now().timestamp_millis() as u64,
         };
         introduction
     }
@@ -174,7 +182,7 @@ impl Endpoint for Exit {
 
 impl Exit {
     pub fn from_status(uuid: String, status: i32, messages: Option<Vec<MessageBuffer>>) -> Self {
-        Exit { uuid, exit_code: status, time: Utc::now().timestamp() as u64, messages }
+        Exit { uuid, exit_code: status, time: Utc::now().timestamp_millis() as u64, messages }
     }
 }
 

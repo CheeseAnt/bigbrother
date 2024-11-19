@@ -10,9 +10,10 @@ use std::time::Duration;
 use log::{error, debug, LevelFilter};
 use env_logger;
 use types::{Zap, Introduction, Exit, MessageBuffer, Endpoint, Args, BrainWaveError};
-use utils::{read_streams, get_folder_size};
+use utils::{read_streams, get_folder_size, log_zap};
 use chrono::Utc;
 use clap::Parser;
+use std::fs::File;
 
 #[tokio::main]
 async fn main() {
@@ -83,16 +84,19 @@ async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError>
 
     debug!("Monitoring process with PID: {}", child.id());
 
-    let uuid: String;
+    let mut uuid: String = "".to_string();
     let introduction = Introduction::from_child(parent_pid as i32, child.id() as i32, root_proc, &root_proc_args.join(" "));
     debug!("Introduction: {:?}", introduction);
-    match introduction.send_telemetry(args.telemetry_endpoint.clone()).await {
-        Ok(uuid_response) => {
-            debug!("Setting UUID: {}", uuid_response);
-            uuid = uuid_response;
-        },
-        Err(e) => {
-            return Err(e);
+
+    if !args.prevent_telemetry {
+        match introduction.send_telemetry(args.telemetry_endpoint.clone()).await {
+            Ok(uuid_response) => {
+                debug!("Setting UUID: {}", uuid_response);
+                uuid = uuid_response;
+            },
+            Err(e) => {
+                return Err(e);
+            }
         }
     }
 
@@ -129,7 +133,9 @@ async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError>
     );
 
     debug!("Exit: {:?}", exit);
-    let _ = exit.send_telemetry(args.telemetry_endpoint.clone()).await?;
+    if !args.prevent_telemetry {
+        let _ = exit.send_telemetry(args.telemetry_endpoint.clone()).await?;
+    }
 
     stdout_handle.join().unwrap();
     stderr_handle.join().unwrap();
@@ -143,6 +149,14 @@ async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<M
 
     // Monitor the process while it's running
     let sleep_interval = Duration::from_secs_f64(args.telemetry_interval);
+
+    let mut log_file: Option<File> = None;
+    if let Some(log_path) = &args.log_to_file {
+        match File::options().append(true).create(true).write(true).open(log_path) {
+            Ok(file) => log_file = Some(file),
+            Err(e) => error!("Failed to open log file: {}", e)
+        }
+    }
 
     loop {
         let next_run = Utc::now() + sleep_interval;
@@ -163,7 +177,12 @@ async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<M
             let zap = Zap::from_process(uuid.clone(), process, data_folder_size, Some(messages.clone()));
             messages.clear();
             debug!("Zap: {:?}", zap);
-            let _ = zap.send_telemetry(args.telemetry_endpoint.clone()).await?;
+
+            log_zap(&zap, &mut log_file);
+
+            if !args.prevent_telemetry {
+                let _ = zap.send_telemetry(args.telemetry_endpoint.clone()).await?;
+            }
         }
 
         if let None = process {
