@@ -4,7 +4,7 @@ mod telemetry;
 
 use std::process::{Command, Stdio, Child};
 use std::sync::{Arc, Mutex};
-use sysinfo::{System, SystemExt, Pid};
+use sysinfo::{System, Pid};
 use std::thread;
 use std::time::Duration;
 use log::{error, debug, LevelFilter};
@@ -82,10 +82,12 @@ async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError>
         }
     };
 
-    debug!("Monitoring process with PID: {}", child.id());
+    let child_pid = child.id();
+
+    debug!("Monitoring process with PID: {}", child_pid);
 
     let mut uuid: String = "".to_string();
-    let introduction = Introduction::from_child(parent_pid as i32, child.id() as i32, root_proc, &root_proc_args.join(" "));
+    let introduction = Introduction::from_child(parent_pid as i32, child_pid as i32, root_proc, &root_proc_args.join(" "));
     debug!("Introduction: {:?}", introduction);
 
     if !args.prevent_telemetry {
@@ -123,6 +125,10 @@ async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError>
         },
         Err(_) => {
             result_int = -1;
+
+            error!("Process with PID {} did not yet terminate - force quitting", child_pid);
+            let sys = System::new_all();
+            sys.process(Pid::from(child_pid as usize)).expect("Failed to find process").kill();
         }
     }
 
@@ -132,13 +138,13 @@ async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError>
         if result_int == 0 { None } else { Some(stderr_message_buffer.lock().unwrap().clone()) },
     );
 
-    debug!("Exit: {:?}", exit);
-    if !args.prevent_telemetry {
-        let _ = exit.send_telemetry(args.telemetry_endpoint.clone()).await?;
-    }
-
     stdout_handle.join().unwrap();
     stderr_handle.join().unwrap();
+
+    debug!("Exit: {:?}", exit);
+    if !args.prevent_telemetry {
+        let _ = exit.send_telemetry(args.telemetry_endpoint.clone()).await;
+    }
 
     return Ok(result_int == 0);
 }

@@ -1,6 +1,6 @@
 use reqwest::Client;
 use once_cell::sync::Lazy;
-use log::debug;
+use log::{debug, error};
 use crate::types::BrainWaveError;
 
 static TELEMETRY_ENDPOINT: Lazy<String> = Lazy::new(|| {
@@ -24,7 +24,8 @@ pub async fn send_telemetry(endpoint: &str, data: Vec<u8>, endpoint_override: Op
 
     let status = response.status();
     if !status.is_success() {
-        return Err(BrainWaveError::TelemetryError(format!("Request failed with status: {}", status)).into());
+        error!("Ignoring failed telemetry request with status: {}", status);
+        return Ok("".to_string());
     }
 
     let body = response.text().await?;  

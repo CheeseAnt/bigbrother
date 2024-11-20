@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use chrono::Utc;
 use clap::Parser;
-use sysinfo::{Process, ProcessExt};
+use sysinfo::Process;
 use crate::utils::{get_current_user, get_hostname};
 use std::error::Error;
 use crate::telemetry::send_telemetry;
@@ -64,7 +64,6 @@ pub struct Args {
 pub enum BrainWaveError {
     RestartRequired(String),
     ExitRequired(String),
-    TelemetryError(String),
     ReqwestError(String),
 }
 
@@ -73,7 +72,6 @@ impl std::fmt::Display for BrainWaveError {
         match self {
             BrainWaveError::RestartRequired(msg) => write!(f, "Process restart required: {}", msg),
             BrainWaveError::ExitRequired(msg) => write!(f, "Process exit required: {}", msg), 
-            BrainWaveError::TelemetryError(msg) => write!(f, "Telemetry error occurred: {}", msg),
             BrainWaveError::ReqwestError(msg) => write!(f, "Request error occurred: {}", msg),
         }
     }
