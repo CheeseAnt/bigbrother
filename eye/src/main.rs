@@ -11,6 +11,7 @@ use log::{error, debug, LevelFilter};
 use env_logger;
 use types::{Zap, Introduction, Exit, MessageBuffer, Endpoint, Args, BrainWaveError};
 use utils::{read_streams, get_folder_size, log_zap};
+use telemetry::{set_telemetry_delay, reset_system_start_time};
 use chrono::Utc;
 use clap::Parser;
 use std::fs::File;
@@ -18,9 +19,14 @@ use std::fs::File;
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
+
     env_logger::Builder::new()
         .filter_level(if args.verbose { LevelFilter::Debug } else { if args.no_output { LevelFilter::Error } else { LevelFilter::Info } })
         .init();
+
+    if args.telemetry_delay > 0.0 {
+        set_telemetry_delay(args.telemetry_delay);
+    }
 
     if args.verbose {
         debug!("Verbose output enabled");
@@ -32,6 +38,9 @@ async fn main() {
     // Run the command
     let mut attempt_count = 0;
     while attempt_count < args.max_restarts {
+        // reset the system start time for delay calculations
+        reset_system_start_time();
+
         match run_command(command, &args).await {
             Ok(true) => {
                 debug!("Command completed successfully - exiting");
@@ -125,10 +134,6 @@ async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError>
         },
         Err(_) => {
             result_int = -1;
-
-            error!("Process with PID {} did not yet terminate - force quitting", child_pid);
-            let sys = System::new_all();
-            sys.process(Pid::from(child_pid as usize)).expect("Failed to find process").kill();
         }
     }
 
@@ -138,15 +143,37 @@ async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError>
         if result_int == 0 { None } else { Some(stderr_message_buffer.lock().unwrap().clone()) },
     );
 
-    stdout_handle.join().unwrap();
-    stderr_handle.join().unwrap();
-
     debug!("Exit: {:?}", exit);
     if !args.prevent_telemetry {
         let _ = exit.send_telemetry(args.telemetry_endpoint.clone()).await;
     }
 
-    return Ok(result_int == 0);
+    match result {
+        Ok(_) => {
+            stdout_handle.join().unwrap();
+            stderr_handle.join().unwrap();
+
+            return Ok(result_int == 0)
+        },
+        Err(e) => {
+            debug!("Process with PID {} may still be alive - force quitting", child_pid);
+            let sys = System::new_all();
+            match sys.process(Pid::from(child_pid as usize)) {
+                Some(process) => {
+                    process.kill_with(sysinfo::Signal::Term);
+                    process.wait();
+                },
+                None => {
+                    error!("Failed to find process with PID {} - it may have already terminated", child_pid);
+                }
+            }
+
+            stdout_handle.join().unwrap();
+            stderr_handle.join().unwrap();
+
+            return Err(e);
+        }
+    }
 }
 
 async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<Mutex<Vec<MessageBuffer>>>, uuid: String) -> Result<i32, BrainWaveError> {

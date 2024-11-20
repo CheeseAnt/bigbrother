@@ -55,6 +55,10 @@ pub struct Args {
     #[arg(short = 'l', long)]
     pub log_to_file: Option<String>,
 
+    /// Delay telemetry signals for x seconds
+    #[arg(short = 't', long, default_value_t = 0.0)]
+    pub telemetry_delay: f64,
+
     /// Command to run
     #[arg(required = true, allow_hyphen_values = true)]
     pub command: Vec<String>,
