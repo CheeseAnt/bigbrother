@@ -1,11 +1,12 @@
 import sanic
 import sanic.response
 import msgpack
-import asyncio
+import sanic_cors
 
 from . import types, database
 
 app = sanic.Sanic("Brain")
+sanic_cors.CORS(app)
 
 telemetry = sanic.Blueprint("telemetry", url_prefix="/telemetry")
 app.blueprint(telemetry)

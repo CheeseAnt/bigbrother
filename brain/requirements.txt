@@ -1,0 +1,6 @@
+sanic
+sanic_cors
+uvicorn
+msgpack
+pymongo
+dataclasses_json
