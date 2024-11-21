@@ -50,7 +50,7 @@ const useRefreshOptions = () => {
 
     const setOptionInternal = (value: { label: string, value: number }) => setOption(value);
 
-    const element = <DropDown options={options} defaultValue={options[4]} setOption={setOptionInternal} value={optionInternal} title='Refresh Speed' />
+    const element = <DropDown options={options} defaultValue={options[4]} setOption={setOptionInternal} value={optionInternal} title='Refresh every' />
 
     return { option, setOption: setOptionInternal, element }
 }

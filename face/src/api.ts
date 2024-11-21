@@ -1,4 +1,4 @@
-import { StatusResponse, ExitResponse, MessageResponse, MetricsResponse } from './types.tsx';
+import { StatusResponse, ExitResponse, MessageResponse, MetricsResponse, IntroductionResponse } from './types.tsx';
 
 const API_BASE = process.env.API_BASE;
 
@@ -24,6 +24,11 @@ export const getBodies = async (includeInactive = false): Promise<string[]> => {
 
 export const getIps = async (includeInactive = false): Promise<string[]> => {
     const response = await fetch(`${API_BASE}/ips?inactive=${includeInactive}`);
+    return response.json();
+};
+
+export const getIntroduction = async (uuid: string): Promise<IntroductionResponse> => {
+    const response = await fetch(`${API_BASE}/introduction/${uuid}`);
     return response.json();
 };
 

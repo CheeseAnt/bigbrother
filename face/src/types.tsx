@@ -11,7 +11,7 @@ export interface MetricsResponse {
     time: number;
 }
 
-export interface StatusResponse {
+export interface IntroductionResponse {
     uuid: string;
     host: string;
     ip: string;
@@ -20,6 +20,9 @@ export interface StatusResponse {
     name: string;
     args: string;
     created_time: number;
+}
+
+export interface StatusResponse {
     exited: boolean;
 }
 

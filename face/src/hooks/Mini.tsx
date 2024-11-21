@@ -1,14 +1,24 @@
-import { getStatus, getMetrics, getEyeballsByBody, getEyeballsByIp } from '../api.ts';
+import { getStatus, getMetrics, getEyeballsByBody, getEyeballsByIp, getIntroduction } from '../api.ts';
 import { useGenericFetch } from './Index.tsx';
 import { useCallback } from 'react';
 
 export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000) => {
+    const fetchIntroduction = useCallback(() => {
+        return getIntroduction(eyeball);
+    }, [eyeball])
+
+    const { data: introduction, loading: loadingIntro, error: errorIntro } = useGenericFetch(fetchIntroduction, 0);
+
     const getStatusAndMetrics = async () => {
         const [status, metrics] = await Promise.all([getStatus(eyeball), getMetrics(eyeball)]);
         return { status, metrics };
     };
     const fetchData = useCallback(getStatusAndMetrics, [eyeball]);
-    return useGenericFetch(fetchData, refreshSpeed);
+    const { data: statusAndMetrics, loading: loadingStatus, error: errorStatus } = useGenericFetch(fetchData, refreshSpeed);
+
+    return {
+        introduction, statusAndMetrics, loadingIntro, loadingStatus, errorIntro, errorStatus
+    }
 };
 
 export const useMiniBody = (body: string, refreshSpeed: number = 5000, inactive: boolean) => {

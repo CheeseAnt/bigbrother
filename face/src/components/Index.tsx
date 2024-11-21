@@ -3,22 +3,22 @@ import { axisClasses } from '@mui/x-charts/ChartsAxis';
 import { useBodies, useIPs } from '../hooks/Index.tsx';
 import { useMiniBody, useMiniEyeball, useMiniIp } from '../hooks/Mini.tsx';
 import styles from '../styles/Index.module.css';
-import { MetricsResponse, StatusResponse } from '../types.tsx';
+import { MetricsResponse, StatusResponse, IntroductionResponse } from '../types.tsx';
 import { RunningIndicator, ExitedIndicator, FloatingLoadingIndicator } from './Indicators.tsx';
 import Actions from './Actions.tsx';
 import useUpdateOptions from './UpdateOptions.tsx';
 
-const StatusContainer = ({ status, loading, last_updated }: { status: StatusResponse, loading: boolean, last_updated: number }) => {
+const StatusContainer = ({ status, introduction, loading, last_updated }: { status: StatusResponse, introduction: IntroductionResponse, loading: boolean, last_updated: number }) => {
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
         <div className='card-body'>
             <div className={`row ${styles.status_row}`}>
                 <div className="col-4 text-start d-flex flex-row gap-2 align-items-center">
                     {status.exited ? <ExitedIndicator loading={loading} /> : <RunningIndicator loading={loading} />}
-                    <span>{status.host}</span>
-                    <span>{status.ip}</span>
+                    <span>{introduction.host}</span>
+                    <span>{introduction.ip}</span>
                 </div>
                 <div className="col-4 text-start">
-                    <span>{status.name} {status.args}</span>
+                    <span>{introduction.name} {introduction.args}</span>
                 </div>
                 <div className="col-4 text-end">
                     {new Date(last_updated).toLocaleString()}
@@ -90,11 +90,11 @@ const MetricsContainer = ({ metrics, uuid, onAction }: { metrics: MetricsRespons
 }
 
 const MiniEyeball = ({ eyeball, onAction, refreshSpeed }: { eyeball: string, onAction: () => void, refreshSpeed: number }) => {
-    const { data: { status, metrics }, loading, error } = useMiniEyeball(eyeball, refreshSpeed);
+    const { statusAndMetrics: { status, metrics }, loadingStatus, errorStatus, introduction } = useMiniEyeball(eyeball, refreshSpeed);
 
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
-        {error && <div>Error: {error.message}</div>}
-        {status && metrics && <StatusContainer status={status} loading={loading} last_updated={metrics[metrics.length - 1].time} />}
+        {errorStatus && <div>Error: {errorStatus.message}</div>}
+        {status && metrics && <StatusContainer introduction={introduction} status={status} loading={loadingStatus} last_updated={metrics[metrics.length - 1]?.time} />}
         {metrics && <MetricsContainer metrics={metrics} uuid={eyeball} onAction={onAction} />}
     </div>
 }

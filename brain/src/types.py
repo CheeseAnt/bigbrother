@@ -100,9 +100,9 @@ class ActionRequest(dataclasses_json.DataClassJsonMixin):
     handled: bool = False
 
 @dataclasses.dataclass
-class StatusResponse(dataclasses_json.DataClassJsonMixin):
+class IntroductionUIResponse(dataclasses_json.DataClassJsonMixin):
     """
-    A response to get the status of a given UUID.
+    A response to get the introduction of a given UUID.
     """
     uuid: str
     host: str
@@ -112,6 +112,12 @@ class StatusResponse(dataclasses_json.DataClassJsonMixin):
     name: str
     args: str
     created_time: int
+
+@dataclasses.dataclass
+class StatusResponse(dataclasses_json.DataClassJsonMixin):
+    """
+    A response to get the status of a given UUID.
+    """
     exited: bool
 
 @dataclasses.dataclass

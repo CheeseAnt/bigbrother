@@ -134,20 +134,22 @@ async def delete_eyeball(uuid: str):
 
     await asyncio.to_thread(_delete_eyeball)
 
+async def get_introduction(uuid: str) -> types.IntroductionUIResponse:
+    """
+    Get introduction for a given UUID.
+    """
+    intro_dict = (await async_introduction_find({"_id": bson.ObjectId(uuid)}, projection={"host": 1, "ip": 1, "pid": 1, "parent_pid": 1, "name": 1, "args": 1, "time": 1, "_id": 1}))[0]
+    intro_dict["uuid"] = intro_dict.pop("_id").binary.hex()
+    intro_dict["created_time"] = intro_dict.pop("time")
+
+    return types.IntroductionUIResponse(**intro_dict)
+
 async def get_status(uuid: str) -> types.StatusResponse:
     """
     Get status for a given UUID.
     """
-    intro_dict = (await async_introduction_find({"_id": bson.ObjectId(uuid)}))[0]
+    intro_dict = (await async_introduction_find({"_id": bson.ObjectId(uuid)}, projection={"exited": 1, "_id": 0}))[0]
     status_dict = {
-        "uuid": intro_dict["_id"].binary.hex(),
-        "host": intro_dict["host"],
-        "ip": intro_dict["ip"],
-        "pid": intro_dict["pid"],
-        "parent_pid": intro_dict["parent_pid"],
-        "name": intro_dict["name"],
-        "args": intro_dict["args"],
-        "created_time": intro_dict["time"],
         "exited": intro_dict["exited"],
     }
 

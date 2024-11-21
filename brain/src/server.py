@@ -95,6 +95,13 @@ async def ips(request: sanic.Request):
 
 ### UI - by UUID ###
 
+@ui.route("/introduction/<uuid>", methods=["GET"])
+async def introduction(request: sanic.Request, uuid: str):
+    """
+    Get introduction for a given UUID.
+    """
+    return sanic.response.json((await database.get_introduction(uuid=uuid)).to_dict(encode_json=True))
+
 @ui.route("/status/<uuid>", methods=["GET"])
 async def status(request: sanic.Request, uuid: str):
     """
