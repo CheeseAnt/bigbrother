@@ -90,7 +90,7 @@ const MetricsContainer = ({ metrics, uuid, onAction }: { metrics: MetricsRespons
 }
 
 const MiniEyeball = ({ eyeball, onAction, refreshSpeed }: { eyeball: string, onAction: () => void, refreshSpeed: number }) => {
-    const { statusAndMetrics: { status, metrics }, loadingStatus, errorStatus, introduction } = useMiniEyeball(eyeball, refreshSpeed);
+    const { status, metrics, loadingStatus, errorStatus, introduction } = useMiniEyeball(eyeball, refreshSpeed);
 
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
         {errorStatus && <div>Error: {errorStatus.message}</div>}

@@ -1,8 +1,12 @@
 import { getStatus, getMetrics, getEyeballsByBody, getEyeballsByIp, getIntroduction } from '../api.ts';
+import { MetricsResponse } from '../types.tsx';
 import { useGenericFetch } from './Index.tsx';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000) => {
+    const [ metrics, setMetrics ] = useState<MetricsResponse[]>([]);
+    const latestTimeRef = useRef<number | undefined>(undefined);
+
     const fetchIntroduction = useCallback(() => {
         return getIntroduction(eyeball);
     }, [eyeball])
@@ -10,14 +14,27 @@ export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000) => 
     const { data: introduction, loading: loadingIntro, error: errorIntro } = useGenericFetch(fetchIntroduction, 0);
 
     const getStatusAndMetrics = async () => {
-        const [status, metrics] = await Promise.all([getStatus(eyeball), getMetrics(eyeball)]);
+        console.log(latestTimeRef.current);
+        const [status, metrics] = await Promise.all([getStatus(eyeball), getMetrics(eyeball, latestTimeRef.current)]);
         return { status, metrics };
     };
     const fetchData = useCallback(getStatusAndMetrics, [eyeball]);
-    const { data: statusAndMetrics, loading: loadingStatus, error: errorStatus } = useGenericFetch(fetchData, refreshSpeed);
+    const { data: { status, metrics: metricsInternal }, loading: loadingStatus, error: errorStatus } = useGenericFetch(fetchData, refreshSpeed);
+
+    useEffect(() => {
+        latestTimeRef.current = undefined;
+        setMetrics([]);
+    }, [eyeball]);
+
+    useEffect(() => {
+        if (!metricsInternal) return;
+        if (metricsInternal.length === 0) return;
+        setMetrics(metricsPrevious => [...metricsPrevious, ...metricsInternal]);
+        latestTimeRef.current = metricsInternal[metricsInternal.length - 1]?.time;
+    }, [metricsInternal]);
 
     return {
-        introduction, statusAndMetrics, loadingIntro, loadingStatus, errorIntro, errorStatus
+        introduction, status, metrics, loadingIntro, loadingStatus, errorIntro, errorStatus
     }
 };
 

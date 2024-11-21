@@ -78,8 +78,25 @@ class UIRequest:
     start: typing.Optional[int] = None
     end: typing.Optional[int] = None
 
-    def to_dict(self) -> dict:
-        return {k: v for k, v in dataclasses.asdict(self).items() if v is not None}
+    def __post_init__(self):
+        if self.start is not None:
+            self.start = int(self.start)
+
+        if self.end is not None:
+            self.end = int(self.end)
+
+    def to_query_dict(self) -> dict:
+        query_dict = {
+            "uuid": self.uuid,
+        }
+
+        if self.start is not None:
+            query_dict.setdefault("time", {})["$gte"] = self.start
+
+        if self.end is not None:
+            query_dict.setdefault("time", {})["$lte"] = self.end
+
+        return query_dict
 
     @classmethod
     def from_request(cls, uuid: str, request: sanic.Request):

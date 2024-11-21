@@ -160,7 +160,7 @@ async def get_metrics(ui_request: types.UIRequest) -> list[types.MetricsResponse
     Get metrics for a given UUID.
     """
     metrics_dict = await asyncio.to_thread(ZAPS.find,
-        ui_request.to_dict(),
+        ui_request.to_query_dict(),
         sort=[("time", pymongo.ASCENDING)],
         projection={"cpu": 1, "memory": 1, "disk": 1, "time": 1, "_id": 0},
     )
@@ -181,7 +181,7 @@ async def get_messages(ui_request: types.UIRequest) -> list[types.MessageBuffer]
     """
 
     messages_dicts = await asyncio.to_thread(ZAPS.find,
-        ui_request.to_dict(),
+        ui_request.to_query_dict(),
         sort=[("time", pymongo.ASCENDING)],
         projection={"messages": 1, "_id": 0},
     )
