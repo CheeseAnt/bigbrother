@@ -7,9 +7,12 @@ import { MetricsResponse, StatusResponse, IntroductionResponse } from '../types.
 import { RunningIndicator, ExitedIndicator, FloatingLoadingIndicator } from './Indicators.tsx';
 import Actions from './Actions.tsx';
 import useUpdateOptions from './UpdateOptions.tsx';
+import { useNavigate } from 'react-router-dom';
 
 const StatusContainer = ({ status, introduction, loading, last_updated }: { status: StatusResponse, introduction: IntroductionResponse, loading: boolean, last_updated: number }) => {
-    return <div className='card m-2 gy-2' data-bs-theme='dark'>
+    const navigate = useNavigate();
+
+    return <div className='card m-2 gy-2 btn btn-outline-secondary' data-bs-theme='dark' onClick={() => navigate(`/eyeball/${introduction.uuid}`)} style={{cursor: 'pointer'}}>
         <div className='card-body'>
             <div className={`row ${styles.status_row}`}>
                 <div className="col-4 text-start d-flex flex-row gap-2 align-items-center">
@@ -61,7 +64,7 @@ const MetricsChart = ({ metric, time, title, unit, color }: { metric: number[], 
     </div>
 }
 
-const MetricsContainer = ({ metrics, uuid, onAction }: { metrics: MetricsResponse[], uuid: string, onAction: () => void }) => {
+const MetricsContainer = ({ metrics, uuid, onAction, exited }: { metrics: MetricsResponse[], uuid: string, onAction: () => void, exited: boolean }) => {
     const time_data = metrics.map((m) => m.time);
     const cpu_data = metrics.map((m) => m.cpu);
     const memory_data = metrics.map((m) => m.memory/1e6);
@@ -72,7 +75,7 @@ const MetricsContainer = ({ metrics, uuid, onAction }: { metrics: MetricsRespons
     const has_any = has_cpu || has_memory || has_disk;
 
     if (!has_any) {
-        return <Actions direction='row' uuid={uuid} onAction={onAction} />;
+        return <Actions direction='row' uuid={uuid} exited={exited} onAction={onAction} />;
     }
 
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
@@ -83,7 +86,7 @@ const MetricsContainer = ({ metrics, uuid, onAction }: { metrics: MetricsRespons
                 {has_disk && <MetricsChart metric={disk_data} time={time_data} title='Disk' unit=' MB' color='#006BD6' />}
             </div>
             <div className='col-1 text-center'>
-                <Actions direction='column' uuid={uuid} onAction={onAction} />
+                <Actions direction='column' uuid={uuid} exited={exited} onAction={onAction} />
             </div>
         </div>
     </div>
@@ -95,7 +98,7 @@ const MiniEyeball = ({ eyeball, onAction, refreshSpeed }: { eyeball: string, onA
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
         {errorStatus && <div>Error: {errorStatus.message}</div>}
         {status && metrics && <StatusContainer introduction={introduction} status={status} loading={loadingStatus} last_updated={metrics[metrics.length - 1]?.time} />}
-        {metrics && <MetricsContainer metrics={metrics} uuid={eyeball} onAction={onAction} />}
+        {metrics && <MetricsContainer metrics={metrics} uuid={eyeball} onAction={onAction} exited={status?.exited} />}
     </div>
 }
 

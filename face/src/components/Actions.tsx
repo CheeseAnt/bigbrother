@@ -20,7 +20,7 @@ const GenericActionPopup = ({ action, onConfirm, onCancel }: { action: string, o
     );
 }
 
-const Actions = ({ direction, uuid, onAction }: { direction: 'row' | 'column', uuid: string, onAction: () => void }) => {
+const Actions = ({ direction, uuid, exited, onAction }: { direction: 'row' | 'column', uuid: string, exited: boolean, onAction: () => void }) => {
     const [showPopup, setShowPopup] = useState(false);
     const [action, setAction] = useState('');
 
@@ -36,9 +36,9 @@ const Actions = ({ direction, uuid, onAction }: { direction: 'row' | 'column', u
 
     const buttonClassName = direction === 'row' ? 'w-25' : 'w-100';
 
-    return <div className={`col gy-3 me-1`}>
-        <Button className={buttonClassName} onClick={() => { setAction('restart'); setShowPopup(true); }}>Restart</Button>
-        <Button className={buttonClassName} onClick={() => { setAction('exit'); setShowPopup(true); }}>Exit</Button>
+    return <div className={`col gy-3 me-1 align-items-center h-100 align-content-center`}>
+        {!exited && <Button className={buttonClassName} onClick={() => { setAction('restart'); setShowPopup(true); }}>Restart</Button>}
+        {!exited && <Button className={buttonClassName} onClick={() => { setAction('exit'); setShowPopup(true); }}>Exit</Button>}
         <Button className={buttonClassName} onClick={() => { setAction('delete'); setShowPopup(true); }}>Delete</Button>
         {showPopup && <GenericActionPopup action={action} onConfirm={(action) => { setShowPopup(false); handleAction(action); }} onCancel={() => { setShowPopup(false); }} />}
     </div>;

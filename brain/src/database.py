@@ -68,7 +68,7 @@ async def async_introduction_find_partial(query: dict) -> list[str]:
     """
     Find partial for introductions.
     """
-    eyes = await asyncio.to_thread(INTRODUCTIONS.find, query, projection=["_id"], sort=[("time", pymongo.DESCENDING)])
+    eyes = await asyncio.to_thread(INTRODUCTIONS.find, query, projection=["_id"], sort=[("exited", pymongo.ASCENDING), ("time", pymongo.DESCENDING)])
     return [eye["_id"].binary.hex() for eye in eyes]
 
 async def get_eyeballs(inactive: bool = False) -> list[str]:
@@ -105,9 +105,9 @@ async def get_bodies(inactive: bool = False) -> list[str]:
     """
 
     if inactive:
-        bodies = await async_introduction_find({}, sort=[("time", pymongo.DESCENDING)], projection={"host": 1, "_id": 0})
+        bodies = await async_introduction_find({}, sort=[("exited", pymongo.ASCENDING), ("time", pymongo.DESCENDING)], projection={"host": 1, "_id": 0})
     else:
-        bodies = await async_introduction_find({"exited": {"$ne": True}}, sort=[("time", pymongo.DESCENDING)], projection={"host": 1, "_id": 0})
+        bodies = await async_introduction_find({"exited": {"$ne": True}}, sort=[("exited", pymongo.ASCENDING), ("time", pymongo.DESCENDING)], projection={"host": 1, "_id": 0})
 
     return list(bodies.distinct("host"))
 
@@ -116,9 +116,9 @@ async def get_ips(inactive: bool = False) -> list[str]:
     Get all IPs.
     """
     if inactive:
-        ips = await async_introduction_find({}, sort=[("time", pymongo.DESCENDING)], projection={"ip": 1, "_id": 0})
+        ips = await async_introduction_find({}, sort=[("exited", pymongo.ASCENDING), ("time", pymongo.DESCENDING)], projection={"ip": 1, "_id": 0})
     else:
-        ips = await async_introduction_find({"exited": {"$ne": True}}, sort=[("time", pymongo.DESCENDING)], projection={"ip": 1, "_id": 0})
+        ips = await async_introduction_find({"exited": {"$ne": True}}, sort=[("exited", pymongo.ASCENDING), ("time", pymongo.DESCENDING)], projection={"ip": 1, "_id": 0})
 
     return list(ips.distinct("ip"))
 
