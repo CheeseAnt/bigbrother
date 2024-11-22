@@ -1,4 +1,4 @@
-import { LineChart, axisClasses } from '@mui/x-charts';
+import { LineChart, axisClasses, chartsGridClasses } from '@mui/x-charts';
 
 export const MetricsChart = ({
     metric,
@@ -19,6 +19,10 @@ export const MetricsChart = ({
         <LineChart
             sx={{
                 padding: '8px',
+                [`.${chartsGridClasses.line}`]: {
+                    stroke: '#404040',
+                    strokeWidth: 1,
+                },
                 [`.${axisClasses.root}`]: {
                     [`.${axisClasses.tick}, .${axisClasses.line}`]: {
                         stroke: '#808080',
@@ -41,8 +45,9 @@ export const MetricsChart = ({
                 showMark: false,
                 label: title,
                 valueFormatter: (v) => v ? `${v.toFixed(2)}${unit}` : null,
-                color: color
+                color: color,
             }]}
+            grid={{ vertical: true, horizontal: true }}
         />
     </div>
 }
