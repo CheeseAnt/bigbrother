@@ -1,0 +1,62 @@
+name: Cross Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-pc-windows-gnu
+          - x86_64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - aarch64-apple-darwin
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Install Cross
+      run: cargo install cross --git https://github.com/cross-rs/cross
+
+    - name: Build
+      run: |
+        cd eye
+        cross build --release --target ${{ matrix.target }}
+
+    - name: Package Binary
+      run: |
+        cd eye/target/${{ matrix.target }}/release
+        if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+          zip bb_eye-${{ matrix.target }}.zip bb_eye.exe
+          mv bb_eye-${{ matrix.target }}.zip ../../../
+          mv bb_eye-${{ matrix.target }}.exe ../../../
+        else
+          tar czf bb_eye-${{ matrix.target }}.tar.gz bb_eye
+          mv bb_eye-${{ matrix.target }}.tar.gz ../../../
+          mv bb_eye ../../../bb_eye-${{ matrix.target }}
+        fi
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: bb_eye-${{ matrix.target }}
+        path: |
+          eye/bb_eye-${{ matrix.target }}.exe
+          eye/bb_eye-${{ matrix.target }}.zip
+          eye/bb_eye-${{ matrix.target }}.tar.gz
+          eye/bb_eye-${{ matrix.target }}
