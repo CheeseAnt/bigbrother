@@ -57,8 +57,11 @@ export const deleteEyeball = async (uuid: string): Promise<void> => {
     });
 };
 
-export const getMessages = async (uuid: string): Promise<MessageResponse[]> => {
-    const response = await fetch(`${API_BASE}/messages/${uuid}`);
+export const getMessages = async (uuid: string, start_time?: number, end_time?: number): Promise<MessageResponse[]> => {
+    let url = `${API_BASE}/messages/${uuid}`;
+    url = handleTimes(url, start_time, end_time);
+
+    const response = await fetch(url);
     return response.json();
 };
 

@@ -1,5 +1,3 @@
-import { LineChart } from '@mui/x-charts/LineChart';
-import { axisClasses } from '@mui/x-charts/ChartsAxis';
 import { useBodies, useIPs } from '../hooks/Index.tsx';
 import { useMiniBody, useMiniEyeball, useMiniIp } from '../hooks/Mini.tsx';
 import styles from '../styles/Index.module.css';
@@ -8,8 +6,10 @@ import { RunningIndicator, ExitedIndicator, FloatingLoadingIndicator } from './I
 import Actions from './Actions.tsx';
 import useUpdateOptions from './UpdateOptions.tsx';
 import { useNavigate } from 'react-router-dom';
+import { MetricsChart } from './Charts.tsx';
 
-const StatusContainer = ({ status, introduction, loading, last_updated }: { status: StatusResponse, introduction: IntroductionResponse, loading: boolean, last_updated: number }) => {
+const StatusContainer = ({
+    status, introduction, loading, last_updated }: { status: StatusResponse, introduction: IntroductionResponse, loading: boolean, last_updated: number }) => {
     const navigate = useNavigate();
 
     return <div className='card m-2 gy-2 btn btn-outline-secondary' data-bs-theme='dark' onClick={() => navigate(`/eyeball/${introduction.uuid}`)} style={{cursor: 'pointer'}}>
@@ -28,39 +28,6 @@ const StatusContainer = ({ status, introduction, loading, last_updated }: { stat
                 </div>
             </div>
         </div>
-    </div>
-}
-
-const MetricsChart = ({ metric, time, title, unit, color }: { metric: number[], time: number[], title: string, unit: string, color: string }) => {
-    return <div className="w-100" style={{ height: '20vh' }}>
-        <LineChart
-            sx={{
-                padding: '8px',
-                [`.${axisClasses.root}`]: {
-                    [`.${axisClasses.tick}, .${axisClasses.line}`]: {
-                        stroke: '#808080',
-                        strokeWidth: 1,
-                    },
-                    [`.${axisClasses.tickLabel}`]: {
-                        fill: '#808080',
-                    },
-                    [`.${axisClasses.label}`]: {
-                        fill: '#808080',
-                    },
-                },
-            }}
-            xAxis={[{ scaleType: 'time', data: time.map((t) => new Date(t)), max: time[time.length - 1], min: time[0] }]}
-            yAxis={[{ max: Math.max(...metric), min: Math.min(...metric), valueFormatter: (v) => `${v.toFixed(2)}${unit}` }]}
-            slotProps={{ legend: { position: { vertical: 'top', horizontal: 'left' }, labelStyle: { fill: '#808080' } } }}
-            series={[{
-                data: metric,
-                area: true,
-                showMark: false,
-                label: title,
-                valueFormatter: (v) => v ? `${v.toFixed(2)}${unit}` : null,
-                color: color
-            }]}
-        />
     </div>
 }
 
@@ -93,11 +60,11 @@ const MetricsContainer = ({ metrics, uuid, onAction, exited }: { metrics: Metric
 }
 
 const MiniEyeball = ({ eyeball, onAction, refreshSpeed }: { eyeball: string, onAction: () => void, refreshSpeed: number }) => {
-    const { status, metrics, loadingStatus, errorStatus, introduction } = useMiniEyeball(eyeball, refreshSpeed);
+    const { status, metrics, loadingStatus, errorStatus, introduction, lastUpdated } = useMiniEyeball(eyeball, refreshSpeed);
 
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
         {errorStatus && <div>Error: {errorStatus.message}</div>}
-        {status && metrics && <StatusContainer introduction={introduction} status={status} loading={loadingStatus} last_updated={metrics[metrics.length - 1]?.time} />}
+        {status && metrics && <StatusContainer introduction={introduction} status={status} loading={loadingStatus} last_updated={lastUpdated} />}
         {metrics && <MetricsContainer metrics={metrics} uuid={eyeball} onAction={onAction} exited={status?.exited} />}
     </div>
 }
@@ -146,7 +113,7 @@ const IndexInner = ({
 
     const containerHook = containerType === 'body' ? useMiniBody : useMiniIp;
 
-    return <div className={`${styles.container} container-fluid`} data-bs-theme='dark'>
+    return <div>
         {updateOptions}
         {loading && <FloatingLoadingIndicator />}
         {error && <div>Error: {error.message}</div>}

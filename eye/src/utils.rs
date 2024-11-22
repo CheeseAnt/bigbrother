@@ -41,7 +41,7 @@ pub fn read_streams(
                 info!("{}", line);
 
                 if let Ok(mut message_buffer) = message_all_clone.lock() {
-                    message_buffer.push(MessageBuffer { message: line, timestamp: Utc::now().timestamp() as u64, error: false });
+                    message_buffer.push(MessageBuffer { message: line, timestamp: Utc::now().timestamp_millis() as u64, error: false });
 
                     if message_buffer.len() > log_buffer_size {
                         let new_content = message_buffer[message_buffer.len() - log_buffer_size..].to_vec();
@@ -59,7 +59,7 @@ pub fn read_streams(
                 info!("{}", line);
 
                 if let Ok(mut message_buffer) = stderr_message_buffer.lock() {
-                    message_buffer.push(MessageBuffer { message: line.clone(), timestamp: Utc::now().timestamp() as u64, error: true });
+                    message_buffer.push(MessageBuffer { message: line.clone(), timestamp: Utc::now().timestamp_millis() as u64, error: true });
 
                     if message_buffer.len() > error_log_buffer_size {
                         let new_content = message_buffer[message_buffer.len() - error_log_buffer_size..].to_vec();
@@ -67,7 +67,7 @@ pub fn read_streams(
                     }
                 }
                 if let Ok(mut message_buffer) = all_message_buffer.lock() {
-                    message_buffer.push(MessageBuffer { message: line.clone(), timestamp: Utc::now().timestamp() as u64, error: true });
+                    message_buffer.push(MessageBuffer { message: line.clone(), timestamp: Utc::now().timestamp_millis() as u64, error: true });
 
                     if message_buffer.len() > log_buffer_size {
                         let new_content = message_buffer[message_buffer.len() - log_buffer_size..].to_vec();

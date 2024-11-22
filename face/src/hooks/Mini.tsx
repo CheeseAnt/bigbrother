@@ -1,5 +1,5 @@
-import { getStatus, getMetrics, getEyeballsByBody, getEyeballsByIp, getIntroduction } from '../api.ts';
-import { MetricsResponse } from '../types.tsx';
+import { getStatus, getMetrics, getEyeballsByBody, getEyeballsByIp, getIntroduction, getMessages } from '../api.ts';
+import { MessageResponse, MetricsResponse } from '../types.tsx';
 import { useGenericFetch } from './Index.tsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -14,7 +14,6 @@ export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000) => 
     const { data: introduction, loading: loadingIntro, error: errorIntro } = useGenericFetch(fetchIntroduction, 0);
 
     const getStatusAndMetrics = async () => {
-        console.log(latestTimeRef.current);
         const [status, metrics] = await Promise.all([getStatus(eyeball), getMetrics(eyeball, latestTimeRef.current)]);
         return { status, metrics };
     };
@@ -30,12 +29,36 @@ export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000) => 
         if (!metricsInternal) return;
         if (metricsInternal.length === 0) return;
         setMetrics(metricsPrevious => [...metricsPrevious, ...metricsInternal]);
-        latestTimeRef.current = metricsInternal[metricsInternal.length - 1]?.time;
+        const latestTime = metricsInternal[metricsInternal.length - 1]?.time + 1;
+        if (latestTime) latestTimeRef.current = latestTime;
     }, [metricsInternal]);
 
     return {
-        introduction, status, metrics, loadingIntro, loadingStatus, errorIntro, errorStatus
+        introduction, status, metrics, loadingIntro, loadingStatus, errorIntro, errorStatus, lastUpdated: latestTimeRef.current ?? 0
     }
+};
+
+export const useMessages = (eyeball: string, refreshSpeed: number = 5000, start: number = 0) => {
+    const [ messages, setMessages ] = useState<MessageResponse[]>([]);
+    const latestTimeRef = useRef<number>(start);
+
+    const fetchData = useCallback(() => getMessages(eyeball, latestTimeRef.current), [eyeball]);
+    const { data: messagesInternal, loading: loadingMessages, error: errorMessages } = useGenericFetch(fetchData, refreshSpeed);
+
+    useEffect(() => {
+        latestTimeRef.current = start;
+        setMessages([]);
+    }, [eyeball]);
+
+    useEffect(() => {
+        if (!messagesInternal) return;
+        if (messagesInternal.length === 0) return;
+        setMessages(messagesPrevious => [...messagesPrevious, ...messagesInternal]);
+        const latestTime = messagesInternal[messagesInternal.length - 1]?.timestamp + 1;
+        if (latestTime) latestTimeRef.current = latestTime;
+    }, [messagesInternal]);
+
+    return { messages, loadingMessages, errorMessages };
 };
 
 export const useMiniBody = (body: string, refreshSpeed: number = 5000, inactive: boolean) => {
