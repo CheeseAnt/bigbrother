@@ -41,14 +41,14 @@ export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000) => 
 export const useMessages = (eyeball: string, refreshSpeed: number = 5000, start: number = 0) => {
     const [ messages, setMessages ] = useState<MessageResponse[]>([]);
     const latestTimeRef = useRef<number>(start);
-
-    const fetchData = useCallback(() => getMessages(eyeball, latestTimeRef.current), [eyeball]);
-    const { data: messagesInternal, loading: loadingMessages, error: errorMessages } = useGenericFetch(fetchData, refreshSpeed);
-
+    
     useEffect(() => {
         latestTimeRef.current = start;
         setMessages([]);
-    }, [eyeball]);
+    }, [eyeball, start]);
+
+    const fetchData = useCallback(() => getMessages(eyeball, latestTimeRef.current), [eyeball, start]);
+    const { data: messagesInternal, loading: loadingMessages, error: errorMessages } = useGenericFetch(fetchData, refreshSpeed);
 
     useEffect(() => {
         if (!messagesInternal) return;

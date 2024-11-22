@@ -3,11 +3,13 @@ import { useMiniEyeball, useMessages } from '../hooks/Mini';
 import { MetricsChart } from './Charts';
 import { FloatingLoadingIndicator, RunningIndicator, ExitedIndicator } from './Indicators';
 import { StatusResponse, IntroductionResponse, MetricsResponse, MessageResponse } from '../types';
-import styles from '../styles/Index.module.css';
 import { Button } from './Button';
 import { ArrowLeftCircle } from 'react-bootstrap-icons';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRef } from 'react';
+import Actions from './Actions';
+import { DropDown, ToggleButtonStyled, useRefreshOptions } from './UpdateOptions';
+import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 
 const FullStatusContainer = ({ 
     status,
@@ -88,7 +90,7 @@ const Message = ({ message }: { message: MessageResponse }) => {
     </div>
 }
 
-const FullMessagesContainer = ({ messages }: { messages: MessageResponse[] }) => {
+const FullMessagesContainer = ({ messages, loading, showErrors }: { messages: MessageResponse[], loading: boolean, showErrors: boolean }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -112,10 +114,50 @@ const FullMessagesContainer = ({ messages }: { messages: MessageResponse[] }) =>
 
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
         <div ref={containerRef} className='card-body text-start' style={{ height: '75vh', overflowY: 'auto' }}>
-            {messages.map((m, i) => <Message key={i} message={m} />)}
+            {loading && <FloatingLoadingIndicator classes='start-50 top-50'/>}
+            {messages.filter(m => showErrors ? m.error : !m.error).map((m, i) => <Message key={i} message={m} />)}
             <div ref={messagesEndRef} />
         </div>
     </div>
+}
+
+const useUpdateOptions = (messageGetter: () => MessageResponse[]) => {
+    const { option: refreshRate, setOption: setRefreshRate, element: refreshElement } = useRefreshOptions();
+    const [ showErrors, setShowErrors ] = useState(false);
+
+    const messagesFromOptions = [
+        { label: 'All', value: 0 },
+        { label: '1 day', value: Date.now() - 24 * 60 * 60 * 1000 },
+        { label: '1 hour', value: Date.now() - 1 * 60 * 60 * 1000 },
+        { label: '30 minutes', value: Date.now() - 30 * 60 * 1000 },
+        { label: '15 minutes', value: Date.now() - 15 * 60 * 1000 },
+        { label: '5 minutes', value: Date.now() - 5 * 60 * 1000 },
+    ]
+    const [ messagesFromInternal, setMessagesFrom ] = useState<{ label: string, value: number }>(messagesFromOptions[3]);
+    const messagesFrom = messagesFromInternal.value;
+
+    const messagesFromElement = <div className='d-flex flex-row gap-2'>
+        <DropDown options={messagesFromOptions} defaultValue={messagesFromOptions[3]} setOption={(value) => setMessagesFrom(value)} value={messagesFromInternal} title='See messages from' />
+        <ToggleButtonGroup
+            exclusive
+            value={showErrors}>
+            <ToggleButtonStyled label='Only show errors' value={true} onChange={() => setShowErrors(showErrors => !showErrors)} />
+        </ToggleButtonGroup>
+        <Button onClick={() => {
+            const content = messageGetter().map(m => `${new Date(m.timestamp).toISOString()}: ${m.message}`).join('\n');
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `messages-${new Date().toISOString()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }}>Download logs</Button>
+    </div>
+    
+    return { refreshRate, messagesFrom, setRefreshRate, setMessagesFrom, refreshElement, messagesFromElement, showErrors };
 }
 
 const Eyeball = () => {
@@ -123,17 +165,38 @@ const Eyeball = () => {
 
     if (!uuid) return <div>Invalid UUID</div>;
 
-    const { status, metrics, loadingStatus, errorStatus, introduction, lastUpdated } = useMiniEyeball(uuid, 5000);
-    const halfAnHourAgo = Date.now() - 30 * 60 * 1000;
-    const { messages, loadingMessages, errorMessages } = useMessages(uuid, 5000, halfAnHourAgo);
+    const { refreshRate, messagesFrom, refreshElement, messagesFromElement, showErrors } = useUpdateOptions(() => messages);
+    const { status, metrics, loadingStatus, errorStatus, introduction, lastUpdated } = useMiniEyeball(uuid, refreshRate);
+    const { messages, loadingMessages, errorMessages } = useMessages(uuid, refreshRate, messagesFrom);
+    const navigate = useNavigate();
 
-    if (!status || !introduction) return <FloatingLoadingIndicator />;
+
+    if (errorStatus || errorMessages) {
+        setTimeout(() => navigate('/'), 3000);
+        return <div>
+            <br></br>
+            <span>Error loading eyeball - has it been deleted?</span>
+            <br></br>
+            <span className='text-end'>Redirecting to home...</span>
+            <br></br>
+            <FloatingLoadingIndicator classes='start-0'/>
+        </div>;
+    }
+
+    if (!status || !introduction) return <FloatingLoadingIndicator classes='start-0 top-50'/>;
 
     return <div>
         <div className='card m-2 gy-2'>
             <FullStatusContainer introduction={introduction} status={status} loading={loadingStatus} last_updated={lastUpdated} />
+            <Actions uuid={uuid} direction='row' exited={status.exited} onAction={() => {}} />
+            <div className='d-flex flex-row w-100 justify-content-end'>
+                {refreshElement}
+            </div>
             <FullMetricsContainer metrics={metrics} />
-            <FullMessagesContainer messages={messages} />
+            <div className='d-flex flex-row w-100 justify-content-end'>
+                {messagesFromElement}
+            </div>
+            <FullMessagesContainer messages={messages} loading={loadingMessages} showErrors={showErrors} />
         </div>
     </div>
 }

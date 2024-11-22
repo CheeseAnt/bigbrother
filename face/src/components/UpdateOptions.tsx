@@ -2,7 +2,7 @@ import { useState } from "react"
 import Select from "react-select"
 import { ToggleButton, ToggleButtonGroup } from "@mui/material"
 
-const DropDown = ({ options, setOption, defaultValue, value, title }: {
+export const DropDown = ({ options, setOption, defaultValue, value, title }: {
     options: { label: string, value: any }[],
     setOption: (value: { label: string, value: any }) => void,
     defaultValue: { label: string, value: any },
@@ -35,7 +35,7 @@ const useContainerOptions = () => {
     return { option, setOption: setOptionInternal, element }
 }
 
-const useRefreshOptions = () => {
+export const useRefreshOptions = () => {
     const options = [
         { label: 'Off', value: 0 },
         { label: '100ms', value: 100 },
@@ -55,31 +55,32 @@ const useRefreshOptions = () => {
     return { option, setOption: setOptionInternal, element }
 }
 
+export const ToggleButtonStyled = ({ value, label, onChange }: { value: boolean, label: string, onChange?: () => void }) => <ToggleButton
+    value={value}
+    onChange={onChange}
+    sx={{
+        color: '#808080',
+        outline: '1px solid #444444',
+        '&.Mui-selected': {
+            color: '#ffffff',
+            backgroundColor: '#444444',
+            '&:hover': {
+                backgroundColor: '#555555'
+            }
+        }
+    }}>
+    {label}
+</ToggleButton>
+
 const useInactiveOptions = () => {
     const [inactive, setInactive] = useState(false);
-
-    const ToggleButtonInternal = ({ value, label }: { value: boolean, label: string }) => <ToggleButton
-        value={value}
-        sx={{
-            color: '#808080',
-            outline: '1px solid #444444',
-            '&.Mui-selected': {
-                color: '#ffffff',
-                backgroundColor: '#444444',
-                '&:hover': {
-                    backgroundColor: '#555555'
-                }
-            }
-        }}>
-        {label}
-    </ToggleButton>
 
     const element = <ToggleButtonGroup
         exclusive
         onChange={(_, value) => setInactive(inactive => value ?? inactive)}
         value={inactive}>
-        <ToggleButtonInternal value={false} label='Only Active' />
-        <ToggleButtonInternal value={true} label='All' />
+        <ToggleButtonStyled value={false} label='Only Active' />
+        <ToggleButtonStyled value={true} label='All' />
     </ToggleButtonGroup>
 
     return { inactive, setInactive, element }
