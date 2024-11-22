@@ -37,8 +37,7 @@ const FullStatusContainer = ({
                 <div className='col-10 align-content-center'>
                     <div className='row'>
                         <div className="col-4 text-start d-flex flex-row gap-2 align-items-center">
-                            <span>{introduction.host}</span>
-                            <span>{introduction.ip}</span>
+                            <span>{introduction.user} @ {introduction.host} {introduction.ip}</span>
                         </div>
                         <div className="col-4 text-start">
                             <span>{introduction.name} {introduction.args}</span>

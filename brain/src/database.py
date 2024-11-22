@@ -138,7 +138,10 @@ async def get_introduction(uuid: str) -> types.IntroductionUIResponse:
     """
     Get introduction for a given UUID.
     """
-    intro_dict = (await async_introduction_find({"_id": bson.ObjectId(uuid)}, projection={"host": 1, "ip": 1, "pid": 1, "parent_pid": 1, "name": 1, "args": 1, "time": 1, "_id": 1}))[0]
+    intro_dict = (await async_introduction_find(
+        {"_id": bson.ObjectId(uuid)},
+        projection={"host": 1, "ip": 1, "pid": 1, "parent_pid": 1, "name": 1, "user": 1, "args": 1, "time": 1, "_id": 1}
+    ))[0]
     intro_dict["uuid"] = intro_dict.pop("_id").binary.hex()
     intro_dict["created_time"] = intro_dict.pop("time")
 

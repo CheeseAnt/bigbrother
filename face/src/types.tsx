@@ -17,6 +17,7 @@ export interface IntroductionResponse {
     ip: string;
     pid: number;
     parent_pid: number;
+    user: string;
     name: string;
     args: string;
     created_time: number;

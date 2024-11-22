@@ -127,6 +127,7 @@ class IntroductionUIResponse(dataclasses_json.DataClassJsonMixin):
     pid: int
     parent_pid: int
     name: str
+    user: str
     args: str
     created_time: int
 

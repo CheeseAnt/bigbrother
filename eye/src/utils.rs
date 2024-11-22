@@ -1,4 +1,4 @@
-use users;
+use whoami;
 use hostname;
 use chrono::{Utc, DateTime, SecondsFormat};
 use std::io::{BufReader, BufRead};
@@ -12,9 +12,7 @@ use std::io::Write;
 use crate::types::{MessageBuffer, Args, Zap};
 
 pub fn get_current_user() -> String {
-    users::get_current_username()
-        .map(|u| u.to_string_lossy().to_string())
-        .unwrap_or_else(|| "unknown".to_string())
+    whoami::username().to_string()
 }
 
 pub fn get_hostname() -> String {
