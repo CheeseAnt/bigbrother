@@ -105,7 +105,7 @@ const FullMessagesContainer = ({ messages, loading, showErrors, scootToBottom }:
 
         // Check if user is near bottom (within 400px)
         const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 400;
-        
+
         if (isNearBottom) {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
