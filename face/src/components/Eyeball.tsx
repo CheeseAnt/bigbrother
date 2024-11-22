@@ -90,7 +90,7 @@ const Message = ({ message }: { message: MessageResponse }) => {
     </div>
 }
 
-const FullMessagesContainer = ({ messages, loading, showErrors }: { messages: MessageResponse[], loading: boolean, showErrors: boolean }) => {
+const FullMessagesContainer = ({ messages, loading, showErrors, scootToBottom }: { messages: MessageResponse[], loading: boolean, showErrors: boolean, scootToBottom: boolean }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -98,8 +98,8 @@ const FullMessagesContainer = ({ messages, loading, showErrors }: { messages: Me
         const container = containerRef.current;
         if (!container) return;
 
-        // Check if user is near bottom (within 100px)
-        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+        // Check if user is near bottom (within 400px)
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 400;
         
         if (isNearBottom) {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -110,7 +110,7 @@ const FullMessagesContainer = ({ messages, loading, showErrors }: { messages: Me
         if (messages.length > 0) {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [messages.length === 0]);
+    }, [messages.length === 0, scootToBottom]);
 
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
         <div ref={containerRef} className='card-body text-start' style={{ height: '75vh', overflowY: 'auto' }}>
@@ -124,6 +124,7 @@ const FullMessagesContainer = ({ messages, loading, showErrors }: { messages: Me
 const useUpdateOptions = (messageGetter: () => MessageResponse[]) => {
     const { option: refreshRate, setOption: setRefreshRate, element: refreshElement } = useRefreshOptions();
     const [ showErrors, setShowErrors ] = useState(false);
+    const [ scootToBottom, setScootToBottom ] = useState(false);
 
     const messagesFromOptions = [
         { label: 'All', value: 0 },
@@ -143,6 +144,7 @@ const useUpdateOptions = (messageGetter: () => MessageResponse[]) => {
             value={showErrors}>
             <ToggleButtonStyled label='Only show errors' value={true} onChange={() => setShowErrors(showErrors => !showErrors)} />
         </ToggleButtonGroup>
+        <Button onClick={() => setScootToBottom(scootToBottom => !scootToBottom)}>Scoot to bottom</Button>
         <Button onClick={() => {
             const content = messageGetter().map(m => `${new Date(m.timestamp).toISOString()}: ${m.message}`).join('\n');
             const blob = new Blob([content], { type: 'text/plain' });
@@ -157,7 +159,7 @@ const useUpdateOptions = (messageGetter: () => MessageResponse[]) => {
         }}>Download logs</Button>
     </div>
     
-    return { refreshRate, messagesFrom, setRefreshRate, setMessagesFrom, refreshElement, messagesFromElement, showErrors };
+    return { refreshRate, messagesFrom, setRefreshRate, setMessagesFrom, refreshElement, messagesFromElement, showErrors, scootToBottom };
 }
 
 const Eyeball = () => {
@@ -165,7 +167,7 @@ const Eyeball = () => {
 
     if (!uuid) return <div>Invalid UUID</div>;
 
-    const { refreshRate, messagesFrom, refreshElement, messagesFromElement, showErrors } = useUpdateOptions(() => messages);
+    const { refreshRate, messagesFrom, refreshElement, messagesFromElement, showErrors, scootToBottom } = useUpdateOptions(() => messages);
     const { status, metrics, loadingStatus, errorStatus, introduction, lastUpdated } = useMiniEyeball(uuid, refreshRate);
     const { messages, loadingMessages, errorMessages } = useMessages(uuid, refreshRate, messagesFrom);
     const navigate = useNavigate();
@@ -196,7 +198,7 @@ const Eyeball = () => {
             <div className='d-flex flex-row w-100 justify-content-end'>
                 {messagesFromElement}
             </div>
-            <FullMessagesContainer messages={messages} loading={loadingMessages} showErrors={showErrors} />
+            <FullMessagesContainer messages={messages} loading={loadingMessages} showErrors={showErrors} scootToBottom={scootToBottom} />
         </div>
     </div>
 }
