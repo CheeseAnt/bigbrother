@@ -10,7 +10,7 @@ use std::time::Duration;
 use log::{error, debug, LevelFilter};
 use env_logger;
 use types::{Zap, Introduction, Exit, MessageBuffer, Endpoint, Args, BrainWaveError};
-use utils::{read_streams, get_folder_size, log_zap};
+use utils::{read_streams, log_zap};
 use telemetry::{set_telemetry_delay, reset_system_start_time};
 use chrono::Utc;
 use clap::Parser;
@@ -197,25 +197,20 @@ async fn handle_process(mut child: Child, args: &Args, all_message_buffer: Arc<M
         // Update system info
         sys.refresh_all();
 
-        let mut data_folder_size = None;
         let process = sys.process(pid);
+        let messages_to_send = if args.no_remote_logs { None } else { Some(all_message_buffer.lock().unwrap().clone()) };
 
-        // track data folder size
-        if let Some(data_folder) = &args.data_folder {
-            data_folder_size = Some(get_folder_size(data_folder));
-            debug!("Data folder size: {} KB", data_folder_size.unwrap());
+        let zap = Zap::from_process(uuid.clone(), process, args, messages_to_send);
+        debug!("Zap: {:?}", zap);
+
+        log_zap(&zap, &mut log_file);
+
+        if !args.prevent_telemetry {
+            let _ = zap.send_telemetry(args.telemetry_endpoint.clone()).await?;
         }
 
         if let Ok(mut messages) = all_message_buffer.lock() {
-            let zap = Zap::from_process(uuid.clone(), process, data_folder_size, Some(messages.clone()));
             messages.clear();
-            debug!("Zap: {:?}", zap);
-
-            log_zap(&zap, &mut log_file);
-
-            if !args.prevent_telemetry {
-                let _ = zap.send_telemetry(args.telemetry_endpoint.clone()).await?;
-            }
         }
 
         if let None = process {

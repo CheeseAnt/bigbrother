@@ -85,16 +85,16 @@ class UIRequest:
         if self.end is not None:
             self.end = int(self.end)
 
-    def to_query_dict(self) -> dict:
+    def to_query_dict(self, time_field: str = "time") -> dict:
         query_dict = {
             "uuid": self.uuid,
         }
 
         if self.start is not None:
-            query_dict.setdefault("time", {})["$gte"] = self.start
+            query_dict.setdefault(time_field, {})["$gte"] = self.start
 
         if self.end is not None:
-            query_dict.setdefault("time", {})["$lte"] = self.end
+            query_dict.setdefault(time_field, {})["$lte"] = self.end
 
         return query_dict
 

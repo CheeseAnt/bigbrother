@@ -2,10 +2,10 @@ use serde::{Serialize, Deserialize};
 use chrono::Utc;
 use clap::Parser;
 use sysinfo::Process;
-use crate::utils::{get_current_user, get_hostname};
+use crate::utils::{get_current_user, get_hostname, get_folder_size};
 use std::error::Error;
 use crate::telemetry::send_telemetry;
-use log::error;
+use log::{error, debug};
 
 #[derive(Debug)]
 #[derive(Parser)]
@@ -22,6 +22,14 @@ pub struct Args {
     /// Do not print output
     #[arg(short = 'n', long, default_value_t = false)]
     pub no_output: bool,
+
+    /// Do not track metrics
+    #[arg(short = 'j', long, default_value_t = false)]
+    pub no_metrics: bool,
+
+    /// Do not send logs to remote server
+    #[arg(short = 'c', long, default_value_t = false)]
+    pub no_remote_logs: bool,
 
     /// Track data folder size
     #[arg(short = 'd', long)]
@@ -115,12 +123,22 @@ impl Endpoint for Zap {
 }
 
 impl Zap {
-    pub fn from_process(uuid: String, process: Option<&Process>, data_folder_size: Option<u64>, messages: Option<Vec<MessageBuffer>>) -> Self {
+    pub fn from_process(uuid: String, process: Option<&Process>, args: &Args, messages: Option<Vec<MessageBuffer>>) -> Self {
         let mut memory = 0.0;
         let mut cpu = 0.0;
-        if let Some(process) = process {
-            memory = process.memory() as f64;
-            cpu = process.cpu_usage() as f64;
+        let mut data_folder_size = None;
+
+        if !args.no_metrics {
+            if let Some(process) = process {
+                memory = process.memory() as f64;
+                cpu = process.cpu_usage() as f64;
+            }
+        }
+
+        // track data folder size
+        if let Some(data_folder) = &args.data_folder {
+            data_folder_size = Some(get_folder_size(data_folder));
+            debug!("Data folder size: {} KB", data_folder_size.unwrap());
         }
 
         let zap = Zap {

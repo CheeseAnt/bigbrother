@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { useMiniEyeball, useMessages } from '../hooks/Mini';
+import { useMiniEyeball, useMessages, useExit } from '../hooks/Mini';
 import { MetricsChart } from './Charts';
 import { FloatingLoadingIndicator, RunningIndicator, ExitedIndicator } from './Indicators';
 import { StatusResponse, IntroductionResponse, MetricsResponse, MessageResponse } from '../types';
@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { useRef } from 'react';
 import Actions from './Actions';
 import { DropDown, ToggleButtonStyled, useRefreshOptions } from './UpdateOptions';
-import { ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { ToggleButtonGroup } from '@mui/material';
 
 const FullStatusContainer = ({ 
     status,
@@ -23,6 +23,7 @@ const FullStatusContainer = ({
     last_updated: number
 }) => {
     const navigate = useNavigate();
+    const { data: exit } = useExit(introduction.uuid, status.exited);
 
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
         <div className='card-body'>
@@ -57,6 +58,11 @@ const FullStatusContainer = ({
                             <span>Last Updated: ({Math.round((Date.now() - last_updated) / 1000)} seconds ago) {new Date(last_updated).toLocaleString()}</span>
                         </div>
                     </div>
+                    {exit && <div className='row'>
+                        <div className='col-12 text-start'>
+                            <span>Exited with code {exit.exit_code} at {new Date(exit.time).toLocaleString()}</span>
+                        </div>
+                    </div>}
                 </div>
             </div>
         </div>
@@ -115,7 +121,7 @@ const FullMessagesContainer = ({ messages, loading, showErrors, scootToBottom }:
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
         <div ref={containerRef} className='card-body text-start' style={{ height: '75vh', overflowY: 'auto' }}>
             {loading && <FloatingLoadingIndicator classes='start-50 top-50'/>}
-            {messages.filter(m => showErrors ? m.error : !m.error).map((m, i) => <Message key={i} message={m} />)}
+            {messages.filter(m => showErrors ? m.error : true).map((m, i) => <Message key={i} message={m} />)}
             <div ref={messagesEndRef} />
         </div>
     </div>
@@ -167,14 +173,21 @@ const Eyeball = () => {
 
     if (!uuid) return <div>Invalid UUID</div>;
 
-    const { refreshRate, messagesFrom, refreshElement, messagesFromElement, showErrors, scootToBottom } = useUpdateOptions(() => messages);
+    const { refreshRate, messagesFrom, refreshElement, messagesFromElement, showErrors, scootToBottom, setRefreshRate } = useUpdateOptions(() => messages);
     const { status, metrics, loadingStatus, errorStatus, introduction, lastUpdated } = useMiniEyeball(uuid, refreshRate);
     const { messages, loadingMessages, errorMessages } = useMessages(uuid, refreshRate, messagesFrom);
     const navigate = useNavigate();
 
+    const goHome = () => { navigate('/'); }
+
+    useEffect(() => {
+        if (status?.exited) {
+            setRefreshRate({ label: 'Off', value: 0 });
+        }
+    }, [status?.exited]);
 
     if (errorStatus || errorMessages) {
-        setTimeout(() => navigate('/'), 3000);
+        setTimeout(goHome, 3000);
         return <div>
             <br></br>
             <span>Error loading eyeball - has it been deleted?</span>
@@ -190,7 +203,7 @@ const Eyeball = () => {
     return <div>
         <div className='card m-2 gy-2'>
             <FullStatusContainer introduction={introduction} status={status} loading={loadingStatus} last_updated={lastUpdated} />
-            <Actions uuid={uuid} direction='row' exited={status.exited} onAction={() => {}} />
+            <Actions uuid={uuid} direction='row' exited={status.exited} onAction={(deleted) => { deleted && goHome() }} />
             <div className='d-flex flex-row w-100 justify-content-end'>
                 {refreshElement}
             </div>

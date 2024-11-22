@@ -20,7 +20,7 @@ const GenericActionPopup = ({ action, onConfirm, onCancel }: { action: string, o
     );
 }
 
-const Actions = ({ direction, uuid, exited, onAction }: { direction: 'row' | 'column', uuid: string, exited: boolean, onAction: () => void }) => {
+const Actions = ({ direction, uuid, exited, onAction }: { direction: 'row' | 'column', uuid: string, exited: boolean, onAction: (deleted: boolean) => void }) => {
     const [showPopup, setShowPopup] = useState(false);
     const [action, setAction] = useState('');
 
@@ -31,7 +31,7 @@ const Actions = ({ direction, uuid, exited, onAction }: { direction: 'row' | 'co
         } else {
             await performAction(uuid, action);
         }
-        onAction();
+        onAction(action === 'delete');
     }
 
     const buttonClassName = direction === 'row' ? 'w-25' : 'w-100';

@@ -1,4 +1,4 @@
-import { getStatus, getMetrics, getEyeballsByBody, getEyeballsByIp, getIntroduction, getMessages } from '../api.ts';
+import { getStatus, getMetrics, getEyeballsByBody, getEyeballsByIp, getIntroduction, getMessages, getExit } from '../api.ts';
 import { MessageResponse, MetricsResponse } from '../types.tsx';
 import { useGenericFetch } from './Index.tsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -69,4 +69,9 @@ export const useMiniBody = (body: string, refreshSpeed: number = 5000, inactive:
 export const useMiniIp = (ip: string, refreshSpeed: number = 5000, inactive: boolean) => {
     const fetchData = useCallback(() => getEyeballsByIp(ip, inactive), [ip, inactive]);
     return useGenericFetch(fetchData, refreshSpeed);
+};
+
+export const useExit = (eyeball: string, exited: boolean) => {
+    const fetchData = useCallback(() => exited ? getExit(eyeball) : Promise.resolve(null), [eyeball, exited]);
+    return useGenericFetch(fetchData, 0);
 };

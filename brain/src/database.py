@@ -181,12 +181,22 @@ async def get_messages(ui_request: types.UIRequest) -> list[types.MessageBuffer]
     """
 
     messages_dicts = await asyncio.to_thread(ZAPS.find,
-        ui_request.to_query_dict(),
+        ui_request.to_query_dict(time_field="messages.timestamp"),
         sort=[("time", pymongo.ASCENDING)],
         projection={"messages": 1, "_id": 0},
     )
 
-    return [types.MessageBuffer(**message) for message_dict in messages_dicts for message in message_dict["messages"]]
+    def fits_time_range(timestamp: int, ui_request: types.UIRequest) -> bool:
+        start = timestamp >= ui_request.start if ui_request.start is not None else True
+        end = timestamp <= ui_request.end if ui_request.end is not None else True
+        return start and end
+
+    return [
+        types.MessageBuffer(**message)
+        for message_dict in messages_dicts
+        for message in message_dict["messages"]
+        if fits_time_range(message["timestamp"], ui_request)
+    ]
 
 async def perform_action(action_request: types.ActionRequest):
     """
