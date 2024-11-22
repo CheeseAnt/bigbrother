@@ -19,7 +19,7 @@ export const genericFetch = async (
     }
 };
 
-export const useGenericFetch = (fetchFunction: () => Promise<any>, refreshSpeed: number = 0, append: boolean = false) => {
+export const useGenericFetch = (fetchFunction: () => Promise<any>, refreshSpeed: number = 0) => {
     const [data, setData] = useState<any>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
