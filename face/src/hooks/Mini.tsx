@@ -3,10 +3,9 @@ import { MessageResponse, MetricsResponse } from '../types.tsx';
 import { useGenericFetch } from './Index.tsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000) => {
+export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000, start: number = 0) => {
     const [ metrics, setMetrics ] = useState<MetricsResponse[]>([]);
-    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-    const latestTimeRef = useRef<number>(oneDayAgo);
+    const latestTimeRef = useRef<number>(start);
 
     const fetchIntroduction = useCallback(() => {
         return getIntroduction(eyeball);
@@ -22,9 +21,9 @@ export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000) => 
     const { data: { status, metrics: metricsInternal }, loading: loadingStatus, error: errorStatus } = useGenericFetch(fetchData, refreshSpeed);
 
     useEffect(() => {
-        latestTimeRef.current = oneDayAgo;
+        latestTimeRef.current = start;
         setMetrics([]);
-    }, [eyeball]);
+    }, [eyeball, start]);
 
     useEffect(() => {
         if (!metricsInternal) return;

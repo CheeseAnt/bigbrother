@@ -59,7 +59,8 @@ const MetricsContainer = ({ metrics, uuid, onAction, exited }: { metrics: Metric
 }
 
 const MiniEyeball = ({ eyeball, onAction, refreshSpeed }: { eyeball: string, onAction: () => void, refreshSpeed: number }) => {
-    const { status, metrics, loadingStatus, errorStatus, introduction, lastUpdated } = useMiniEyeball(eyeball, refreshSpeed);
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const { status, metrics, loadingStatus, errorStatus, introduction, lastUpdated } = useMiniEyeball(eyeball, refreshSpeed, oneDayAgo);
 
     return <div className='card m-2 gy-2' data-bs-theme='dark'>
         {errorStatus && <div>Error: {errorStatus.message}</div>}
