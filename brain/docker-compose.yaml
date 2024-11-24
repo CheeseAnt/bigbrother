@@ -1,0 +1,18 @@
+services:
+  brain-api:
+    build:
+      context: .
+    ports:
+      - 8000:8000
+  brain-mongo:
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=example-user
+      - MONGODB_INITDB_ROOT_PASSWORD=example-pass
+
+volumes:
+  mongo-data:
