@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000) => {
     const [ metrics, setMetrics ] = useState<MetricsResponse[]>([]);
-    const latestTimeRef = useRef<number | undefined>(undefined);
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const latestTimeRef = useRef<number>(oneDayAgo);
 
     const fetchIntroduction = useCallback(() => {
         return getIntroduction(eyeball);
@@ -21,7 +22,7 @@ export const useMiniEyeball = (eyeball: string, refreshSpeed: number = 5000) => 
     const { data: { status, metrics: metricsInternal }, loading: loadingStatus, error: errorStatus } = useGenericFetch(fetchData, refreshSpeed);
 
     useEffect(() => {
-        latestTimeRef.current = undefined;
+        latestTimeRef.current = oneDayAgo;
         setMetrics([]);
     }, [eyeball]);
 
