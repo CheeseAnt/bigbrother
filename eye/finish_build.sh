@@ -24,5 +24,5 @@ fi
 if [ "$TARGET" = "x86_64-pc-windows-gnu" ]; then
     zip -j $SOURCE_DIR/dist/bb_eye-$TARGET.exe.zip $SOURCE_DIR/dist/bb_eye-$TARGET.exe
 else
-    tar -czf $SOURCE_DIR/dist/bb_eye-$TARGET.tar.gz $SOURCE_DIR/dist/bb_eye-$TARGET
+    (cd $SOURCE_DIR/dist && tar -czf bb_eye-$TARGET.tar.gz bb_eye-$TARGET)
 fi
