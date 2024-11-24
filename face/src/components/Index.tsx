@@ -8,6 +8,8 @@ import useUpdateOptions from './UpdateOptions.tsx';
 import { useNavigate } from 'react-router-dom';
 import { MetricsChart } from './Charts.tsx';
 
+const RENDER_DATE = Date.now();
+
 const StatusContainer = ({
     status, introduction, loading, last_updated }: { status: StatusResponse, introduction: IntroductionResponse, loading: boolean, last_updated: number }) => {
     const navigate = useNavigate();
@@ -59,7 +61,7 @@ const MetricsContainer = ({ metrics, uuid, onAction, exited }: { metrics: Metric
 }
 
 const MiniEyeball = ({ eyeball, onAction, refreshSpeed }: { eyeball: string, onAction: () => void, refreshSpeed: number }) => {
-    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const oneDayAgo = RENDER_DATE - 24 * 60 * 60 * 1000;
     const { status, metrics, loadingStatus, errorStatus, introduction, lastUpdated } = useMiniEyeball(eyeball, refreshSpeed, oneDayAgo);
 
     return <div className='card m-2 gy-2' data-bs-theme='dark'>

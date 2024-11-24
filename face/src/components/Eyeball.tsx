@@ -96,7 +96,6 @@ const Message = ({ message }: { message: MessageResponse }) => {
 }
 
 const FullMessagesContainer = ({ messages, loading, showErrors, scootToBottom }: { messages: MessageResponse[], loading: boolean, showErrors: boolean, scootToBottom: boolean }) => {
-    const messagesEndRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -107,13 +106,13 @@ const FullMessagesContainer = ({ messages, loading, showErrors, scootToBottom }:
         const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 400;
 
         if (isNearBottom) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
         }
     }, [messages]);
 
     useEffect(() => {
         if (messages.length > 0) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            containerRef.current?.scrollTo({ top: containerRef.current?.scrollHeight, behavior: 'smooth' });
         }
     }, [messages.length === 0, scootToBottom]);
 
@@ -121,7 +120,6 @@ const FullMessagesContainer = ({ messages, loading, showErrors, scootToBottom }:
         <div ref={containerRef} className='card-body text-start' style={{ height: '75vh', overflowY: 'auto' }}>
             {loading && <FloatingLoadingIndicator classes='start-50 top-50'/>}
             {messages.filter(m => showErrors ? m.error : true).map((m, i) => <Message key={i} message={m} />)}
-            <div ref={messagesEndRef} />
         </div>
     </div>
 }

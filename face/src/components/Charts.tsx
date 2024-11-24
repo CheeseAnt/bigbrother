@@ -36,7 +36,7 @@ export const MetricsChart = ({
                     },
                 },
             }}
-            xAxis={[{ scaleType: 'time', data: time.map((t) => new Date(t)), max: time[time.length - 1], min: time[0] }]}
+            xAxis={[{ scaleType: 'time', data: time.map((t) => new Date(t)), max: time[time.length - 1], min: time[0], valueFormatter: (v) => v.toLocaleString() }]}
             yAxis={[{ max: Math.max(...metric), min: Math.min(...metric), valueFormatter: (v) => `${v.toFixed(2)}${unit}` }]}
             slotProps={{ legend: { position: { vertical: 'top', horizontal: 'left' }, labelStyle: { fill: '#808080' } } }}
             series={[{
