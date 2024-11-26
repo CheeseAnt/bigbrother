@@ -1,9 +1,14 @@
 services:
   brain-api:
+    image: ants3107/brain-api:latest
+    platform: linux/arm64
     build:
       context: .
+      platforms:
+        - linux/arm64
+        - linux/amd64
     ports:
-      - 8000:8000
+      - 8150:8000
   brain-mongo:
     image: mongo:latest
     ports:
