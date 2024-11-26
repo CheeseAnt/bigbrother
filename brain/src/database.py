@@ -4,6 +4,7 @@ import pymongo
 import pymongo.cursor
 import bson
 import asyncio
+import math
 
 client = pymongo.MongoClient(settings.MONGO_URI)
 db = client["brain"]
@@ -168,7 +169,13 @@ async def get_metrics(ui_request: types.UIRequest) -> list[types.MetricsResponse
         projection={"cpu": 1, "memory": 1, "disk": 1, "time": 1, "_id": 0},
     )
 
-    return [types.MetricsResponseStructure(**metric) for metric in metrics_dict]
+    metrics_dicts = list(metrics_dict)
+
+    if len(metrics_dicts) > settings.LARGEST_METRICS_RESPONSE:
+        rough_interval = math.ceil(len(metrics_dicts) / settings.LARGEST_METRICS_RESPONSE)
+        metrics_dicts = metrics_dicts[:-1:rough_interval] + [metrics_dicts[-1]]
+
+    return [types.MetricsResponseStructure(**metric) for metric in metrics_dicts]
 
 async def get_exit(uuid: str) -> types.ExitResponse:
     """

@@ -18,6 +18,17 @@ Install the Eye process monitor:
 curl https://raw.githubusercontent.com/CheeseAnt/bigbrother/refs/heads/master/eye/get_latest_release.sh | sh
 ```
 
+## Throughput Testing
+Results from the eye monitor:
+
+| Workload | Base (no features) | Metrics | Disk Monitor | Logs | Metrics + Disk | Metrics + Logs | Metrics + Disk + Logs |
+|----------|-------------------|---------|--------------|------|----------------|----------------|---------------------|
+| Low      | 162 Hz      | 162 Hz | 160 Hz | 136 Hz | 160 Hz | 141 Hz | 138 Hz |
+| High     | 162 Hz      | 40 Hz  | N/A         | N/A        | 40 Hz   | N/A          | N/A               |
+
+Results from the brain server:
+
+
 ## Components
 
 ### Eye
