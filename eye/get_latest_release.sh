@@ -61,7 +61,7 @@ else
     tar xzf "$ASSET_NAME"
     rm "$ASSET_NAME"
     mv "$ASSET_RAW" "eye"
-    exec "./eye" --version
+    "./eye" --version
 fi
 
 echo "Downloaded latest release $ASSET_RAW"
