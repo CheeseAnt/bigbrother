@@ -17,6 +17,7 @@ RUN deno run build
 FROM node:23.2.0-slim
 
 ENV SELFTRACK=true
+ENV DISPLAY_NAME='BB API'
 
 WORKDIR /app
 RUN apt update && apt install -y curl && curl -L https://eye.antonshmanton.com/latest | sh && rm -rf /var/lib/apt/lists/*
@@ -31,4 +32,4 @@ RUN chmod +x /app/docker-entrypoint.sh
 
 CMD sh /app/docker-entrypoint.sh
 SHELL ["/bin/bash", "-c"]
-CMD if [ $SELFTRACK = "true" ]; then ./eye --telemetry-interval 15 sh /app/docker-entrypoint.sh; else sh /app/docker-entrypoint.sh; fi
+CMD if [ $SELFTRACK = "true" ]; then ./eye --telemetry-interval 15 --display-name $DISPLAY_NAME sh /app/docker-entrypoint.sh; else sh /app/docker-entrypoint.sh; fi

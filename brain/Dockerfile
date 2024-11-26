@@ -1,5 +1,6 @@
 FROM python:3.12-slim
 ENV SELFTRACK=true
+ENV DISPLAY_NAME='BB Brain'
 
 WORKDIR /brain
 
