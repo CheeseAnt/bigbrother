@@ -42,6 +42,7 @@ class Introduction(Entry):
     host: str
     user: str
     time: int
+    display_name: typing.Optional[str] = None
 
 @dataclasses.dataclass
 class Exit(Entry):
@@ -130,6 +131,7 @@ class IntroductionUIResponse(dataclasses_json.DataClassJsonMixin):
     user: str
     args: str
     created_time: int
+    display_name: typing.Optional[str] = None
 
 @dataclasses.dataclass
 class StatusResponse(dataclasses_json.DataClassJsonMixin):
