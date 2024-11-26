@@ -3,7 +3,7 @@ ENV SELFTRACK=true
 
 WORKDIR /brain
 
-RUN apt update && apt install -y curl && curl https://raw.githubusercontent.com/CheeseAnt/bigbrother/refs/heads/master/eye/get_latest_release.sh | sh && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y curl && curl -L https://eye.antonshmanton.com/latest | sh && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt

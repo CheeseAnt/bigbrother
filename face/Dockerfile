@@ -19,7 +19,7 @@ FROM node:23.2.0-slim
 ENV SELFTRACK=true
 
 WORKDIR /app
-RUN apt update && apt install -y curl && curl https://raw.githubusercontent.com/CheeseAnt/bigbrother/refs/heads/master/eye/get_latest_release.sh | sh && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y curl && curl -L https://eye.antonshmanton.com/latest | sh && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g serve
 COPY --from=build /app/dist dist-clean/

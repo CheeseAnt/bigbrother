@@ -15,6 +15,11 @@ BigBrother consists of three main components:
 Install the Eye process monitor:
 
 ```
+curl -L https://eye.antonshmanton.com/latest | sh
+```
+
+(Failover)
+```
 curl https://raw.githubusercontent.com/CheeseAnt/bigbrother/refs/heads/master/eye/get_latest_release.sh | sh
 ```
 
