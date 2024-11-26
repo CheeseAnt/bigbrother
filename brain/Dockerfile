@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 ENV SELFTRACK=true
-ENV DISPLAY_NAME='BB Brain'
+ENV DISPLAY_NAME='BB API'
 
 WORKDIR /brain
 
@@ -12,4 +12,4 @@ RUN pip install -r requirements.txt
 COPY . .
 
 SHELL ["/bin/bash", "-c"]
-CMD if [ $SELFTRACK = "true" ]; then ./eye -e http://localhost:8000/telemetry --telemetry-interval 15 --telemetry-delay 10 python -u run.py; else python run.py; fi
+CMD if [ $SELFTRACK = "true" ]; then ./eye -e http://localhost:8000/telemetry --telemetry-interval 15 --telemetry-delay 10 --display-name "$DISPLAY_NAME" python -u run.py; else python run.py; fi
