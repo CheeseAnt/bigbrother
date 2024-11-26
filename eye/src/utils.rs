@@ -6,10 +6,14 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::process::{ChildStdout, ChildStderr};
 use fs_extra::dir::get_size;
-use log::{info};
+use log::{info, debug};
 use std::fs::File;
 use std::io::Write;
 use crate::types::{MessageBuffer, Args, Zap};
+use tokio::signal::unix::{signal, SignalKind};
+use std::sync::atomic::{AtomicBool, Ordering};
+use sysinfo::{System, Pid};
+use std::time::Duration;
 
 pub fn get_current_user() -> String {
     whoami::username().to_string()
@@ -96,6 +100,53 @@ pub fn log_zap(zap: &Zap, log_file: &mut Option<File>) {
             log_file.write_all(format!(
                 "{:}: {:?}, {:?}, {:?}, {:}\n", time, zap.memory, zap.cpu, zap.disk, message
             ).as_bytes()).unwrap();
+        }
+    }
+}
+
+// Add this near the top of the file
+pub async fn setup_signal_handlers(child_pid: u32) {
+    let shutting_down = Arc::new(AtomicBool::new(false));
+    let mut sigterm = signal(SignalKind::terminate()).unwrap();
+    let mut sigint = signal(SignalKind::interrupt()).unwrap();
+    
+    let shutting_down_term = shutting_down.clone();
+    let shutting_down_int = shutting_down.clone();
+    
+    // Handle SIGTERM
+    tokio::spawn(async move {
+        sigterm.recv().await;
+        if !shutting_down_term.swap(true, Ordering::SeqCst) {
+            debug!("Received SIGTERM, initiating graceful shutdown...");
+            graceful_shutdown(child_pid).await;
+        }
+    });
+
+    // Handle SIGINT (Ctrl+C)
+    tokio::spawn(async move {
+        sigint.recv().await;
+        if !shutting_down_int.swap(true, Ordering::SeqCst) {
+            debug!("Received SIGINT, initiating graceful shutdown...");
+            graceful_shutdown(child_pid).await;
+        }
+    });
+}
+
+async fn graceful_shutdown(child_pid: u32) {
+    let sys = System::new_all();
+    
+    // Try to terminate child process gracefully first
+    if let Some(process) = sys.process(Pid::from(child_pid as usize)) {
+        debug!("Sending SIGTERM to child process {}", child_pid);
+        process.kill_with(sysinfo::Signal::Term);
+        
+        // Give the process some time to cleanup
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        
+        // If still running, force kill
+        if let Some(process) = sys.process(Pid::from(child_pid as usize)) {
+            debug!("Child process still running, sending SIGKILL");
+            process.kill_with(sysinfo::Signal::Kill);
         }
     }
 }

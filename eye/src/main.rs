@@ -10,7 +10,7 @@ use std::time::Duration;
 use log::{error, debug, LevelFilter};
 use env_logger;
 use types::{Zap, Introduction, Exit, MessageBuffer, Endpoint, Args, BrainWaveError};
-use utils::{read_streams, log_zap};
+use utils::{read_streams, log_zap, setup_signal_handlers};
 use telemetry::{set_telemetry_delay, reset_system_start_time};
 use chrono::Utc;
 use clap::Parser;
@@ -92,6 +92,7 @@ async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError>
     };
 
     let child_pid = child.id();
+    setup_signal_handlers(child_pid).await;
 
     debug!("Monitoring process with PID: {}", child_pid);
 
