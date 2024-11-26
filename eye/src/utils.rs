@@ -10,7 +10,10 @@ use log::{info, debug};
 use std::fs::File;
 use std::io::Write;
 use crate::types::{MessageBuffer, Args, Zap};
+#[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
+#[cfg(windows)] 
+use tokio::signal::windows::ctrl_c;
 use std::sync::atomic::{AtomicBool, Ordering};
 use sysinfo::{System, Pid};
 use std::time::Duration;
@@ -104,15 +107,15 @@ pub fn log_zap(zap: &Zap, log_file: &mut Option<File>) {
     }
 }
 
-// Add this near the top of the file
+#[cfg(unix)]
 pub async fn setup_signal_handlers(child_pid: u32) {
     let shutting_down = Arc::new(AtomicBool::new(false));
     let mut sigterm = signal(SignalKind::terminate()).unwrap();
     let mut sigint = signal(SignalKind::interrupt()).unwrap();
-    
+
     let shutting_down_term = shutting_down.clone();
     let shutting_down_int = shutting_down.clone();
-    
+
     // Handle SIGTERM
     tokio::spawn(async move {
         sigterm.recv().await;
@@ -127,6 +130,23 @@ pub async fn setup_signal_handlers(child_pid: u32) {
         sigint.recv().await;
         if !shutting_down_int.swap(true, Ordering::SeqCst) {
             debug!("Received SIGINT, initiating graceful shutdown...");
+            graceful_shutdown(child_pid).await;
+        }
+    });
+}
+
+#[cfg(windows)]
+pub async fn setup_signal_handlers(child_pid: u32) {
+    let shutting_down = Arc::new(AtomicBool::new(false));
+    let mut sigterm = ctrl_c().unwrap();
+
+    let shutting_down_term = shutting_down.clone();
+
+    // Handle SIGTERM
+    tokio::spawn(async move {
+        sigterm.recv().await;
+        if !shutting_down_term.swap(true, Ordering::SeqCst) {
+            debug!("Received SIGTERM, initiating graceful shutdown...");
             graceful_shutdown(child_pid).await;
         }
     });
