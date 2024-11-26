@@ -86,7 +86,7 @@ async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError>
     {
         Ok(child) => child,
         Err(e) => {
-            error!("Failed to spawn process: {}", e);
+            error!("Failed to spawn process {:?} with args {:?}: {}", root_proc, root_proc_args, e);
             return Ok(false);
         }
     };
