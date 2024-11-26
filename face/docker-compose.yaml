@@ -1,5 +1,5 @@
 services:
-  face-api:
+  face-ui:
     image: ants3107/face-ui:latest
     platform: linux/arm64
     build:
@@ -7,6 +7,8 @@ services:
       platforms:
         - linux/arm64
         - linux/amd64
+    environment:
+      API_BASE: http://localhost:8000/ui
     ports:
       - 8160:3000
   

@@ -11,12 +11,18 @@ RUN deno install
 
 COPY . .
 
+ENV API_BASE=REPLACE_API_BASE
 RUN deno run build
 
 FROM node:23.2.0-alpine
 
 WORKDIR /app
 RUN npm install -g serve
-COPY --from=build /app/dist dist/
+COPY --from=build /app/dist dist-clean/
 
-CMD ["serve", "-s", "/app/dist"]
+ENV API_BASE='http://localhost:8000/ui'
+
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+CMD sh /app/docker-entrypoint.sh

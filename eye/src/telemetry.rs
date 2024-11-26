@@ -4,7 +4,7 @@ use log::{debug, error};
 use crate::types::BrainWaveError;
 
 static TELEMETRY_ENDPOINT: Lazy<String> = Lazy::new(|| {
-    std::env::var("TELEMETRY_ENDPOINT").unwrap_or_else(|_| "https://bb.antonshmanton.com/telemetry".to_string())
+    std::env::var("TELEMETRY_ENDPOINT").unwrap_or_else(|_| "http://localhost:8000/telemetry".to_string())
 });
 
 static CLIENT: Lazy<Client> = Lazy::new(|| Client::new());
