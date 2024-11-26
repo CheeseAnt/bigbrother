@@ -56,10 +56,12 @@ if [ "$PLATFORM" = "x86_64-pc-windows-gnu" ]; then
     unzip -o "$ASSET_NAME"
     rm "$ASSET_NAME"
     mv "$ASSET_RAW" "eye.exe"
+    open "eye.exe" --version
 else
     tar xzf "$ASSET_NAME"
     rm "$ASSET_NAME"
     mv "$ASSET_RAW" "eye"
+    exec "./eye" --version
 fi
 
-echo "Downloaded latest release $ASSET_NAME"
+echo "Downloaded latest release $ASSET_RAW"
