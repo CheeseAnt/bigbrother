@@ -1,6 +1,8 @@
 import { useState } from "react"
 import Select from "react-select"
 import { ToggleButton, ToggleButtonGroup } from "@mui/material"
+import { Button } from "./Button"
+import { setAuth } from "../api"
 
 export const DropDown = ({ options, setOption, defaultValue, value, title }: {
     options: { label: string, value: any }[],
@@ -95,6 +97,9 @@ const useUpdateOptions = () => {
         {containerOptions}
         {refreshOptions}
         {inactiveOptions}
+        <div className='ms-auto'>
+            <Button onClick={() => setAuth("", "")}>Log Out</Button>
+        </div>
     </div>
 
     return { containerType, refreshSpeed, updateOptions, inactive }

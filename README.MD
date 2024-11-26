@@ -113,7 +113,7 @@ Options:
   -d, --data-folder <DATA_FOLDER>
           Track data folder size
   -e, --telemetry-endpoint <TELEMETRY_ENDPOINT>
-          Telemetry endpoint
+          Telemetry endpoint # OR SET ENVIRONMENT VARIABLE API_BASE
   -i, --telemetry-interval <TELEMETRY_INTERVAL>
           Telemetry Interval [default: 1]
   -b, --log-buffer-size <LOG_BUFFER_SIZE>

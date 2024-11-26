@@ -2,6 +2,41 @@ import { StatusResponse, ExitResponse, MessageResponse, MetricsResponse, Introdu
 
 const API_BASE = process.env.API_BASE;
 
+export const setAuth = (username: string, password: string) => {
+    const userAuth = btoa(`${username}:${password}`);
+    window.localStorage.setItem("auth", userAuth);
+}
+
+export const getAuth = () => {
+    return window.localStorage.getItem("auth");
+}
+
+const fetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    const response = await window.fetch(url, {
+        ...options,
+        headers: {
+            ...options.headers,
+            Authorization: `Basic ${getAuth()}`
+        }
+    });
+
+    if (response.status === 401) {
+        window.localStorage.removeItem("auth");
+    }
+
+    return response;
+}
+
+export const isBadAuth = async () => {
+    try {
+        await getBodies();
+        return false;
+    } catch (e) {
+        return true;
+    }
+}
+
+
 const handleTimes = (url: string, start_time?: number, end_time?: number): string => {
     const params = new URLSearchParams();
     if (start_time) params.append('start', start_time.toString());

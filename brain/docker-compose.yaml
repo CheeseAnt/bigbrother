@@ -9,6 +9,9 @@ services:
         - linux/amd64
     ports:
       - 8150:8000
+    environment:
+      - BB_USER_NAME=user
+      - BB_PASSWORD=pass
   brain-mongo:
     image: mongo:latest
     ports:

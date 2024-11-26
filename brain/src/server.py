@@ -3,16 +3,17 @@ import sanic.response
 import msgpack
 import sanic_cors
 
-from . import types, database
+from . import types, database, middleware
 
 app = sanic.Sanic("Brain")
-sanic_cors.CORS(app)
 
 telemetry = sanic.Blueprint("telemetry", url_prefix="/telemetry")
 app.blueprint(telemetry)
 
 ui = sanic.Blueprint("ui", url_prefix="/ui")
 app.blueprint(ui)
+app.middleware(middleware_or_request=middleware.basic_auth, attach_to="request")
+sanic_cors.CORS(app)
 
 ### TELEMETRY ###
 
@@ -27,7 +28,7 @@ async def zap(request: sanic.Request):
     return await database.add_entry(entry=zap, request=request)
 
 @telemetry.route("/introduction", methods=["POST"])
-async def introduction(request: sanic.Request):
+async def introduction_tel(request: sanic.Request):
     """
     Record an introduction.
     """
