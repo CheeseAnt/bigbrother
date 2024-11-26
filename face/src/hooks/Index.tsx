@@ -19,16 +19,39 @@ export const genericFetch = async (
     }
 };
 
+export const useTabVisibility = () => {
+  const [isVisible, setIsVisible] = useState(!document.hidden);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsVisible(document.visibilityState === 'visible');
+    };
+
+    // Listen for visibility change events
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  return isVisible;
+};
+
 export const useGenericFetch = (fetchFunction: () => Promise<any>, refreshSpeed: number = 0) => {
     const [data, setData] = useState<any>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
+    const isVisible = useTabVisibility();
 
     const fetchData = useCallback(
         () => {
-            genericFetch(fetchFunction, setData, setLoading, setError)
+            if (isVisible) {
+                genericFetch(fetchFunction, setData, setLoading, setError)
+            }
         },
-        [fetchFunction]
+        [fetchFunction, isVisible]
     );
 
     useEffect(() => {

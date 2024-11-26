@@ -39,6 +39,7 @@ const Actions = ({ direction, uuid, exited, onAction }: { direction: 'row' | 'co
     return <div className={`col gy-3 me-1 align-items-center h-100 align-content-center`}>
         {!exited && <Button className={buttonClassName} onClick={() => { setAction('restart'); setShowPopup(true); }}>Restart</Button>}
         {!exited && <Button className={buttonClassName} onClick={() => { setAction('exit'); setShowPopup(true); }}>Exit</Button>}
+        {!exited && <Button className={buttonClassName} onClick={() => { setAction('abandon'); setShowPopup(true); }}>Mark Exited</Button>}
         {exited && <Button className={buttonClassName} onClick={() => { setAction('delete'); setShowPopup(true); }}>Delete</Button>}
         {showPopup && <GenericActionPopup action={action} onConfirm={(action) => { setShowPopup(false); handleAction(action); }} onCancel={() => { setShowPopup(false); }} />}
     </div>;

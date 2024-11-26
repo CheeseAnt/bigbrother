@@ -212,4 +212,7 @@ async def perform_action(action_request: types.ActionRequest):
     """
     Perform an action on a given UUID.
     """
-    await asyncio.to_thread(USER_ACTIONS.insert_one, action_request.to_dict())
+    if action_request.action == "abandon":
+        await asyncio.to_thread(INTRODUCTIONS.update_one, {"_id": bson.ObjectId(action_request.uuid)}, {"$set": {"exited": True}})
+    else:
+        await asyncio.to_thread(USER_ACTIONS.insert_one, action_request.to_dict())
