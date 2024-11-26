@@ -22,7 +22,11 @@ const StatusContainer = ({
                     <span>{introduction.user} @ {introduction.host} {introduction.ip}</span>
                 </div>
                 <div className="col-4 text-start">
-                    <span>{introduction.name} {introduction.args}</span>
+                    {introduction.display_name ?
+                        <span>{introduction.display_name}</span>
+                        :
+                        <span>{introduction.name} {introduction.args}</span>
+                    }
                 </div>
                 <div className="col-4 text-end">
                     {new Date(last_updated).toLocaleString()}

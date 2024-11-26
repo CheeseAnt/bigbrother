@@ -35,6 +35,11 @@ const FullStatusContainer = ({
                     </div>
                 </div>
                 <div className='col-10 align-content-center'>
+                    {introduction.display_name && <div className='row'>
+                        <div className='col-12 text-center'>
+                            {introduction.display_name}
+                        </div>
+                    </div>}
                     <div className='row'>
                         <div className="col-4 text-start d-flex flex-row gap-2 align-items-center">
                             <span>{introduction.user} @ {introduction.host} {introduction.ip}</span>

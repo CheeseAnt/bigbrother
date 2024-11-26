@@ -97,7 +97,7 @@ async fn run_command(command: &str, args: &Args) -> Result<bool, BrainWaveError>
     debug!("Monitoring process with PID: {}", child_pid);
 
     let mut uuid: String = "".to_string();
-    let introduction = Introduction::from_child(parent_pid as i32, child_pid as i32, root_proc, &root_proc_args.join(" "));
+    let introduction = Introduction::from_child(parent_pid as i32, child_pid as i32, root_proc, &root_proc_args.join(" "), args.display_name.clone());
     debug!("Introduction: {:?}", introduction);
 
     if !args.prevent_telemetry {

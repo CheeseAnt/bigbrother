@@ -19,6 +19,7 @@ export interface IntroductionResponse {
     parent_pid: number;
     user: string;
     name: string;
+    display_name: string;
     args: string;
     created_time: number;
 }

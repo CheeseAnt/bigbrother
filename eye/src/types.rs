@@ -67,6 +67,10 @@ pub struct Args {
     #[arg(short = 't', long, default_value_t = 0.0)]
     pub telemetry_delay: f64,
 
+    /// Display name
+    #[arg(short = 'D', long)]
+    pub display_name: Option<String>,
+
     /// Command to run
     #[arg(required = true, allow_hyphen_values = true)]
     pub command: Vec<String>,
@@ -158,6 +162,7 @@ pub struct Introduction {
     pub pid: i32,
     pub parent_pid: i32,
     pub name: String,
+    pub display_name: Option<String>,
     pub args: String,
     pub host: String,
     pub user: String,
@@ -171,12 +176,13 @@ impl Endpoint for Introduction {
 }
 
 impl Introduction {
-    pub fn from_child(parent_pid: i32, child_pid: i32, root_proc: &str, root_proc_args: &str) -> Self {
+    pub fn from_child(parent_pid: i32, child_pid: i32, root_proc: &str, root_proc_args: &str, display_name: Option<String>) -> Self {
         let introduction = Introduction {
             pid: child_pid,
             parent_pid: parent_pid,
             name: root_proc.to_string(),
             args: root_proc_args.to_string(),
+            display_name,
             host: get_hostname(),
             user: get_current_user(),
             time: Utc::now().timestamp_millis() as u64,
